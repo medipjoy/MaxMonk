@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ClearDay — Product Requirements Document</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #07070D;
+    --sf: #0F0F16;
+    --sf2: #14141C;
+    --br: rgba(255,255,255,0.07);
+    --tx: #DDDDE8;
+    --mu: #6060 78;
+    --mu: #60607A;
+    --ac: #A78BFA;
+    --q1: #FF5C5C;
+    --q2: #2ECC8F;
+    --q3: #5B9BFF;
+    --q4: #6B6B82;
+    --green: #2ECC8F;
+    --red: #FF5C5C;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--tx);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13.5px;
+    line-height: 1.75;
+    padding: 0;
+  }
+
+  /* ── LAYOUT ── */
+  .shell { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--sf);
+    border-right: 1px solid var(--br);
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    overflow-y: auto;
+    padding: 28px 0 40px;
+    z-index: 10;
+  }
+
+  .sidebar-logo {
+    display: flex; align-items: center; gap: 9px;
+    padding: 0 20px 24px;
+    border-bottom: 1px solid var(--br);
+    margin-bottom: 16px;
+  }
+
+  .logo-icon {
+    width: 26px; height: 26px; border-radius: 7px;
+    background: linear-gradient(135deg, var(--ac), #6C3FC5);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+
+  .logo-text { font-size: 13px; font-weight: 700; letter-spacing: -.3px; color: rgba(255,255,255,.75); }
+  .logo-sub  { font-size: 9px; color: var(--mu); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 1px; }
+
+  .nav-section { padding: 0 12px; margin-bottom: 6px; }
+  .nav-label   { font-size: 8.5px; color: var(--mu); letter-spacing: 1.8px; text-transform: uppercase; padding: 8px 8px 5px; }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border-radius: 7px; cursor: pointer;
+    font-size: 12px; color: var(--mu); transition: all .15s;
+    text-decoration: none; border: none; background: none; width: 100%; text-align: left;
+  }
+  .nav-item:hover  { background: rgba(255,255,255,.04); color: var(--tx); }
+  .nav-item.active { background: rgba(167,139,250,.12); color: var(--ac); }
+  .nav-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  .main { margin-left: 240px; padding: 52px 64px 100px; max-width: 960px; }
+
+  /* ── HEADER ── */
+  .doc-header { margin-bottom: 56px; padding-bottom: 32px; border-bottom: 1px solid var(--br); }
+  .doc-badge  { display: inline-flex; align-items: center; gap: 6px; background: rgba(167,139,250,.1); border: 1px solid rgba(167,139,250,.22); border-radius: 20px; padding: 4px 12px; font-size: 10px; color: var(--ac); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 18px; }
+  .doc-title  { font-size: 34px; font-weight: 700; letter-spacing: -1px; color: #fff; margin-bottom: 10px; line-height: 1.15; }
+  .doc-title span { color: var(--ac); }
+  .doc-desc   { font-size: 14px; color: var(--mu); max-width: 540px; line-height: 1.7; margin-bottom: 24px; }
+
+  .meta-row { display: flex; gap: 28px; flex-wrap: wrap; }
+  .meta-item { display: flex; flex-direction: column; gap: 3px; }
+  .meta-label { font-size: 9px; color: var(--mu); letter-spacing: 1.5px; text-transform: uppercase; }
+  .meta-val   { font-size: 12px; color: var(--tx); font-weight: 500; }
+
+  /* ── SECTIONS ── */
+  .section { margin-bottom: 72px; scroll-margin-top: 32px; }
+  .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+  .section-num    { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ac); background: rgba(167,139,250,.1); border: 1px solid rgba(167,139,250,.2); border-radius: 5px; padding: 2px 8px; }
+  .section-title  { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: -.4px; }
+
+  /* ── FEATURE CARDS ── */
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .feature-grid.single { grid-template-columns: 1fr; }
+
+  .fcard {
+    background: var(--sf);
+    border: 1px solid var(--br);
+    border-radius: 12px;
+    padding: 20px 22px;
+    transition: border-color .15s;
+  }
+  .fcard:hover { border-color: rgba(167,139,250,.25); }
+  .fcard-head  { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+  .fcard-icon  { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+  .fcard-meta  { flex: 1; }
+  .fcard-name  { font-size: 13px; font-weight: 600; color: var(--tx); margin-bottom: 2px; }
+  .fcard-tag   { font-size: 9px; letter-spacing: 1.2px; text-transform: uppercase; }
+  .fcard-desc  { font-size: 12px; color: var(--mu); line-height: 1.65; margin-bottom: 14px; }
+  .fcard-rules { display: flex; flex-direction: column; gap: 5px; }
+
+  .rule {
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: 11.5px; color: rgba(221,221,232,.7); line-height: 1.5;
+  }
+  .rule-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--ac); margin-top: 6px; flex-shrink: 0; }
+
+  /* ── QUADRANT TABLE ── */
+  .quad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .quad-card { border-radius: 10px; padding: 16px 18px; border: 1px solid; }
+  .quad-card h4 { font-size: 12px; font-weight: 700; margin-bottom: 4px; letter-spacing: .3px; }
+  .quad-card p  { font-size: 11px; opacity: .65; margin-bottom: 8px; }
+  .quad-card ul { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+  .quad-card li { font-size: 11px; opacity: .8; }
+  .quad-card li::before { content: "→ "; opacity: .4; }
+
+  /* ── DATA SCHEMA ── */
+  .schema-block { background: var(--sf); border: 1px solid var(--br); border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+  .schema-head  { padding: 10px 16px; border-bottom: 1px solid var(--br); display: flex; align-items: center; gap: 8px; }
+  .schema-title { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--ac); }
+  .schema-body  { padding: 14px 16px; }
+  .schema-field { display: flex; gap: 12px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,.03); font-size: 11.5px; }
+  .schema-field:last-child { border-bottom: none; }
+  .sf-name  { font-family: 'JetBrains Mono', monospace; color: var(--q3); width: 130px; flex-shrink: 0; }
+  .sf-type  { font-family: 'JetBrains Mono', monospace; color: var(--q2); width: 110px; flex-shrink: 0; }
+  .sf-desc  { color: var(--mu); }
+
+  /* ── FLOW DIAGRAM ── */
+  .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; margin: 16px 0; }
+  .flow-step { background: var(--sf2); border: 1px solid var(--br); border-radius: 8px; padding: 8px 14px; font-size: 11.5px; color: var(--tx); }
+  .flow-arrow { padding: 0 8px; color: var(--mu); font-size: 13px; }
+
+  /* ── INLINE CODE ── */
+  code { font-family: 'JetBrains Mono', monospace; font-size: 11px; background: rgba(167,139,250,.1); color: var(--ac); padding: 1px 6px; border-radius: 4px; }
+
+  /* ── PRIORITY BADGE ── */
+  .badge { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 2px 8px; border-radius: 10px; }
+  .badge-p1 { background: rgba(255,92,92,.15);  color: var(--q1); }
+  .badge-p2 { background: rgba(46,204,143,.15); color: var(--q2); }
+  .badge-p3 { background: rgba(91,155,255,.15); color: var(--q3); }
+
+  /* ── SPEC TABLE ── */
+  .spec-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+  .spec-table th { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--mu); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--br); }
+  .spec-table td { font-size: 12px; color: var(--tx); padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.03); vertical-align: top; }
+  .spec-table tr:last-child td { border-bottom: none; }
+
+  /* ── CALLOUT ── */
+  .callout { border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; border-left: 3px solid; }
+  .callout-info { background: rgba(167,139,250,.07); border-color: var(--ac); }
+  .callout-warn { background: rgba(255,179,71,.07);  border-color: #FFB347; }
+  .callout p    { font-size: 12px; line-height: 1.65; }
+  .callout-label{ font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 5px; font-weight: 700; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-thumb { background: #1e1e2a; border-radius: 4px; }
+
+  @media (max-width: 800px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 32px 24px 80px; }
+    .feature-grid { grid-template-columns: 1fr; }
+    .quad-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="logo-text">clearday</div>
+        <div class="logo-sub">PRD v1.0</div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Overview</div>
+      <a href="#overview"    class="nav-item active"><span class="nav-dot" style="background:#A78BFA"></span>Product Overview</a>
+      <a href="#philosophy"  class="nav-item"><span class="nav-dot" style="background:#A78BFA"></span>Design Philosophy</a>
+      <a href="#stack"       class="nav-item"><span class="nav-dot" style="background:#A78BFA"></span>Tech Stack</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Core Features</div>
+      <a href="#canvas"      class="nav-item"><span class="nav-dot" style="background:#FF5C5C"></span>Bubble Matrix Canvas</a>
+      <a href="#mit"         class="nav-item"><span class="nav-dot" style="background:#A78BFA"></span>MIT Strip</a>
+      <a href="#addmove"     class="nav-item"><span class="nav-dot" style="background:#2ECC8F"></span>Add Move Panel</a>
+      <a href="#drag"        class="nav-item"><span class="nav-dot" style="background:#5B9BFF"></span>Drag & Drop</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Secondary Features</div>
+      <a href="#sparks"      class="nav-item"><span class="nav-dot" style="background:#A78BFA"></span>Sparks Scratchpad</a>
+      <a href="#onhold"      class="nav-item"><span class="nav-dot" style="background:#FFB347"></span>On Hold</a>
+      <a href="#vault"       class="nav-item"><span class="nav-dot" style="background:#6B6B82"></span>Vault</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">AI Features</div>
+      <a href="#ai-cat"      class="nav-item"><span class="nav-dot" style="background:#A78BFA"></span>AI Categorization</a>
+      <a href="#ai-reflect"  class="nav-item"><span class="nav-dot" style="background:#A78BFA"></span>End-of-Day Reflect</a>
+      <a href="#ai-pulse"    class="nav-item"><span class="nav-dot" style="background:#A78BFA"></span>Weekly/Monthly Pulse</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Social & Data</div>
+      <a href="#share"       class="nav-item"><span class="nav-dot" style="background:#2ECC8F"></span>Share via Code</a>
+      <a href="#storage"     class="nav-item"><span class="nav-dot" style="background:#5B9BFF"></span>Data & Storage</a>
+      <a href="#schema"      class="nav-item"><span class="nav-dot" style="background:#5B9BFF"></span>Data Schema</a>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- HEADER -->
+    <div class="doc-header">
+      <div class="doc-badge">⚡ Feature Specification · v1.0</div>
+      <div class="doc-title">ClearDay<br/><span>Product Requirements</span></div>
+      <div class="doc-desc">A minimalist, AI-powered Eisenhower Matrix productivity app for individuals. Designed to run fully inside Claude artifacts, shareable with teammates on the free tier, with zero external backend.</div>
+      <div class="meta-row">
+        <div class="meta-item"><div class="meta-label">Status</div><div class="meta-val">Ready for Development</div></div>
+        <div class="meta-item"><div class="meta-label">Target Runtime</div><div class="meta-val">Claude Artifact / VS Code React</div></div>
+        <div class="meta-item"><div class="meta-label">Framework</div><div class="meta-val">React (hooks only)</div></div>
+        <div class="meta-item"><div class="meta-label">AI Model</div><div class="meta-val">claude-sonnet-4-20250514</div></div>
+        <div class="meta-item"><div class="meta-label">Storage</div><div class="meta-val">window.storage (Claude) / localStorage</div></div>
+      </div>
+    </div>
+
+    <!-- 1. OVERVIEW -->
+    <div class="section" id="overview">
+      <div class="section-header">
+        <span class="section-num">01</span>
+        <span class="section-title">Product Overview</span>
+      </div>
+
+      <div class="callout callout-info">
+        <div class="callout-label">Core Philosophy</div>
+        <p>ClearDay is built around the <strong>Eisenhower Matrix</strong> as the primary mental model. Every task (called a <strong>Move</strong>) lives on a free-flowing XY canvas where X = Urgency and Y = Importance. Bubble size reflects time commitment. Everything secondary lives behind icons — the canvas is sacred.</p>
+      </div>
+
+      <div class="feature-grid">
+        <div class="fcard">
+          <div class="fcard-head">
+            <div class="fcard-icon" style="background:rgba(167,139,250,.12)">🎯</div>
+            <div class="fcard-meta">
+              <div class="fcard-name">Primary User</div>
+              <div class="fcard-tag" style="color:var(--ac)">Target</div>
+            </div>
+          </div>
+          <div class="fcard-desc">Finance professionals managing both personal and professional goals. Individual use, but shareable read-only snapshots with teammates.</div>
+        </div>
+        <div class="fcard">
+          <div class="fcard-head">
+            <div class="fcard-icon" style="background:rgba(46,204,143,.12)">📦</div>
+            <div class="fcard-meta">
+              <div class="fcard-name">Deployment</div>
+              <div class="fcard-tag" style="color:var(--q2)">Runtime</div>
+            </div>
+          </div>
+          <div class="fcard-desc">Ships as a single React file. Runs natively in Claude artifact sandbox. Adaptable to VS Code with localStorage fallback for <code>window.storage</code>.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. DESIGN PHILOSOPHY -->
+    <div class="section" id="philosophy">
+      <div class="section-header">
+        <span class="section-num">02</span>
+        <span class="section-title">Design Philosophy</span>
+      </div>
+
+      <div class="feature-grid">
+        <div class="fcard">
+          <div class="fcard-head">
+            <div class="fcard-icon" style="background:rgba(167,139,250,.12)">🌑</div>
+            <div class="fcard-meta">
+              <div class="fcard-name">Visual Language</div>
+              <div class="fcard-tag" style="color:var(--ac)">Aesthetics</div>
+            </div>
+          </div>
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div>Dark ink background <code>#07070D</code></div>
+            <div class="rule"><div class="rule-dot"></div>Font: Plus Jakarta Sans (300/400/500/600)</div>
+            <div class="rule"><div class="rule-dot"></div>Accent: <code>#A78BFA</code> purple</div>
+            <div class="rule"><div class="rule-dot"></div>Q1 red · Q2 green · Q3 blue · Q4 gray</div>
+            <div class="rule"><div class="rule-dot"></div>Radial gradients on bubbles, glow on drag</div>
+            <div class="rule"><div class="rule-dot"></div>Micro-animations: pop, up, blink keyframes</div>
+          </div>
+        </div>
+        <div class="fcard">
+          <div class="fcard-head">
+            <div class="fcard-icon" style="background:rgba(46,204,143,.12)">🔕</div>
+            <div class="fcard-meta">
+              <div class="fcard-name">Minimalism Rules</div>
+              <div class="fcard-tag" style="color:var(--q2)">UX Constraints</div>
+            </div>
+          </div>
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div>Canvas is the only primary UI element</div>
+            <div class="rule"><div class="rule-dot"></div>ALL secondary functions are icon-only in top bar</div>
+            <div class="rule"><div class="rule-dot"></div>Icon labels only appear on hover (title attribute)</div>
+            <div class="rule"><div class="rule-dot"></div>No text labels on nav icons</div>
+            <div class="rule"><div class="rule-dot"></div>Panels slide up from bottom as overlays</div>
+            <div class="rule"><div class="rule-dot"></div>Toast notifications replace all alerts/confirms</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. TECH STACK -->
+    <div class="section" id="stack">
+      <div class="section-header">
+        <span class="section-num">03</span>
+        <span class="section-title">Tech Stack</span>
+      </div>
+      <table class="spec-table">
+        <thead><tr><th>Layer</th><th>Choice</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Framework</td><td><code>React</code> (hooks)</td><td>useState, useEffect, useRef only. No Redux, no context.</td></tr>
+          <tr><td>Styling</td><td>Inline styles + global <code>&lt;style&gt;</code> tag</td><td>No CSS modules, no Tailwind. CSS injected via template literal in component.</td></tr>
+          <tr><td>Icons</td><td>Inline SVG components</td><td>Zero icon library imports. Each icon is a named React component returning SVG JSX.</td></tr>
+          <tr><td>Storage (Claude)</td><td><code>window.storage.get/set</code></td><td>Async key-value. Personal (sh=false) and shared (sh=true) modes.</td></tr>
+          <tr><td>Storage (VS Code)</td><td><code>localStorage</code> fallback</td><td>Wrap stor.get/set with try/catch + localStorage fallback when window.storage undefined.</td></tr>
+          <tr><td>AI</td><td>Anthropic <code>/v1/messages</code></td><td>Model: <code>claude-sonnet-4-20250514</code>. Max tokens: 900. No streaming.</td></tr>
+          <tr><td>Fonts</td><td>Google Fonts CDN</td><td>Plus Jakarta Sans 300/400/500/600. JetBrains Mono for code/monospace.</td></tr>
+          <tr><td>Drag</td><td>Native mouse/touch events</td><td>Global window listeners. No library. useRef for drag state to avoid stale closures.</td></tr>
+        </tbody>
+      </table>
+      <div class="callout callout-warn">
+        <div class="callout-label">VS Code Adaptation Note</div>
+        <p>When running outside Claude, replace <code>window.storage.get/set</code> with <code>localStorage.getItem/setItem</code>. The AI calls require a proxy or CORS-enabled endpoint since browsers block direct Anthropic API calls without an API key header. Inject the key server-side or via a Vite env variable.</p>
+      </div>
+    </div>
+
+    <!-- 4. BUBBLE MATRIX CANVAS -->
+    <div class="section" id="canvas">
+      <div class="section-header">
+        <span class="section-num">04</span>
+        <span class="section-title">Bubble Matrix Canvas</span>
+      </div>
+
+      <div class="callout callout-info">
+        <div class="callout-label">Feature Priority</div>
+        <p><span class="badge badge-p1">P1 · Core</span> &nbsp; This is the entire app. Everything else supports it.</p>
+      </div>
+
+      <div class="feature-grid single">
+        <div class="fcard">
+          <div class="fcard-name" style="margin-bottom:10px">Axis System</div>
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div>Full-viewport canvas. Flex grows to fill remaining height after MIT strip and topbar.</div>
+            <div class="rule"><div class="rule-dot"></div>SVG overlay renders two crossing gradient lines: horizontal = URGENCY axis, vertical = IMPORTANCE axis.</div>
+            <div class="rule"><div class="rule-dot"></div>Arrowheads on right (urgency) and top (importance) ends of axes.</div>
+            <div class="rule"><div class="rule-dot"></div>Axis labels: <code>URGENCY</code> bottom-right of horizontal, <code>IMPORTANCE</code> top-right of vertical. Font-size 7px, opacity 10%.</div>
+            <div class="rule"><div class="rule-dot"></div>Quadrant watermarks: DO NOW (Q1, top-right), SCHEDULE (Q2, top-left), DELEGATE (Q3, bottom-right), ELIMINATE (Q4, bottom-left). 9px, ~8% opacity, colored per quadrant.</div>
+            <div class="rule"><div class="rule-dot"></div>SVG is <code>position:absolute, inset:0, pointerEvents:none</code>. Canvas div has <code>cursor:crosshair</code>.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="quad-grid" style="margin-top:16px">
+        <div class="quad-card" style="background:rgba(255,92,92,.07);border-color:rgba(255,92,92,.2)">
+          <h4 style="color:#FF5C5C">Q1 — Do Now</h4>
+          <p>Urgent · Important</p>
+          <ul>
+            <li>Top-right quadrant (cx&gt;0.5, cy&lt;0.5)</li>
+            <li>Bubble color: #FF5C5C</li>
+            <li>Highest z-index among active</li>
+          </ul>
+        </div>
+        <div class="quad-card" style="background:rgba(46,204,143,.07);border-color:rgba(46,204,143,.2)">
+          <h4 style="color:#2ECC8F">Q2 — Schedule</h4>
+          <p>Important · Not Urgent</p>
+          <ul>
+            <li>Top-left quadrant (cx&lt;0.5, cy&lt;0.5)</li>
+            <li>Bubble color: #2ECC8F</li>
+            <li>Goal: most moves should live here</li>
+          </ul>
+        </div>
+        <div class="quad-card" style="background:rgba(91,155,255,.07);border-color:rgba(91,155,255,.2)">
+          <h4 style="color:#5B9BFF">Q3 — Delegate</h4>
+          <p>Urgent · Not Important</p>
+          <ul>
+            <li>Bottom-right (cx&gt;0.5, cy&gt;0.5)</li>
+            <li>Bubble color: #5B9BFF</li>
+            <li>On hold bubbles dim to 38% opacity</li>
+          </ul>
+        </div>
+        <div class="quad-card" style="background:rgba(107,107,130,.05);border-color:rgba(107,107,130,.15)">
+          <h4 style="color:#6B6B82">Q4 — Eliminate</h4>
+          <p>Neither</p>
+          <ul>
+            <li>Bottom-left (cx&lt;0.5, cy&gt;0.5)</li>
+            <li>Bubble color: #6B6B82</li>
+            <li>Lowest visual weight</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. BUBBLES -->
+    <div class="section" id="addmove">
+      <div class="section-header">
+        <span class="section-num">05</span>
+        <span class="section-title">Move Bubbles</span>
+      </div>
+      <div class="feature-grid">
+        <div class="fcard">
+          <div class="fcard-head">
+            <div class="fcard-icon" style="background:rgba(255,92,92,.12)">🫧</div>
+            <div class="fcard-meta">
+              <div class="fcard-name">Bubble Rendering</div>
+              <div class="fcard-tag" style="color:var(--q1)">Visual</div>
+            </div>
+          </div>
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div>Position: <code>absolute</code>, computed from <code>cx * canvasWidth</code> and <code>cy * canvasHeight</code>.</div>
+            <div class="rule"><div class="rule-dot"></div>Size (radius r) determined by <code>time</code> field: quick=20, short=29, medium=38, deep=50.</div>
+            <div class="rule"><div class="rule-dot"></div>Background: radial gradient from <code>color22</code> to <code>color08</code> (hex alpha suffix).</div>
+            <div class="rule"><div class="rule-dot"></div>Border: 1.5px solid <code>color40</code>. On hold: <code>color20</code>. Dragging: <code>color66</code>.</div>
+            <div class="rule"><div class="rule-dot"></div>Text: first 1–3 words of move text (1 for quick, 2 for short, 3 for medium/deep) + "…" if truncated.</div>
+            <div class="rule"><div class="rule-dot"></div>Domain icon (🏠 personal / 💼 professional) at bottom, 7px, 40% opacity. Tap to toggle domain.</div>
+            <div class="rule"><div class="rule-dot"></div>On hold: pause icon top-right at 50% opacity.</div>
+            <div class="rule"><div class="rule-dot"></div>Entry animation: <code>pop</code> keyframe (scale .35 → 1.07 → 1, cubic-bezier(.34,1.56,.64,1)).</div>
+          </div>
+        </div>
+        <div class="fcard">
+          <div class="fcard-head">
+            <div class="fcard-icon" style="background:rgba(46,204,143,.12)">⏱️</div>
+            <div class="fcard-meta">
+              <div class="fcard-name">Time → Size Mapping</div>
+              <div class="fcard-tag" style="color:var(--q2)">Logic</div>
+            </div>
+          </div>
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div><strong>quick</strong> ⚡ — ≤30 min — radius 20px</div>
+            <div class="rule"><div class="rule-dot"></div><strong>short</strong> ◔ — ~1 hour — radius 29px</div>
+            <div class="rule"><div class="rule-dot"></div><strong>medium</strong> ◑ — ~2 hours — radius 38px</div>
+            <div class="rule"><div class="rule-dot"></div><strong>deep</strong> ● — 3h+ — radius 50px</div>
+            <div class="rule"><div class="rule-dot"></div>User selects via icon-only button row in Add Move panel.</div>
+            <div class="rule"><div class="rule-dot"></div>Default: <code>short</code>.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-grid single" style="margin-top:14px">
+        <div class="fcard">
+          <div class="fcard-name" style="margin-bottom:10px">Add Move Panel — Full Spec</div>
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div>Triggered by: tapping canvas background, or tapping + icon in any quadrant (legacy, optional).</div>
+            <div class="rule"><div class="rule-dot"></div>Tapping canvas pre-initializes sliders based on tap position: converts (tapCx, tapCy) → urgency/importance via <code>slidersFromPos()</code>.</div>
+            <div class="rule"><div class="rule-dot"></div><strong>Textarea</strong>: full-width, auto-focus, min-height 58px. Enter (no shift) submits.</div>
+            <div class="rule"><div class="rule-dot"></div><strong>Urgency slider</strong>: range 5–95. Gradient fill: Q1 red to transparent. Label shows Very Low / Low / High / Very High.</div>
+            <div class="rule"><div class="rule-dot"></div><strong>Importance slider</strong>: range 5–95. Gradient fill: Q2 green to transparent.</div>
+            <div class="rule"><div class="rule-dot"></div><strong>Mini Matrix Preview</strong> (44×44px, 2×2 grid): live updates as sliders change. Active quadrant shows colored dot.</div>
+            <div class="rule"><div class="rule-dot"></div><strong>Quadrant tag</strong>: auto-derived from sliders. urg&gt;50 + imp&gt;50 = Q1, urg&gt;50 + imp&lt;50 = Q3, etc. Shown as colored badge.</div>
+            <div class="rule"><div class="rule-dot"></div><strong>Time selector</strong>: 4 icon buttons (⚡◔◑●). Selected state: purple border + purple text.</div>
+            <div class="rule"><div class="rule-dot"></div><strong>Domain toggle</strong>: Professional / Personal. Full-width split buttons.</div>
+            <div class="rule"><div class="rule-dot"></div>Submit button label: "Place in {QS[q].l}". Disabled until text is non-empty.</div>
+            <div class="rule"><div class="rule-dot"></div>On submit: calls <code>addMove(text, q, domain, time, cx, cy)</code> where cx/cy derived from sliders via <code>posFromSliders(urg, imp)</code>.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. DRAG & DROP -->
+    <div class="section" id="drag">
+      <div class="section-header">
+        <span class="section-num">06</span>
+        <span class="section-title">Drag & Drop</span>
+      </div>
+
+      <div class="callout callout-info">
+        <div class="callout-label">Implementation Approach</div>
+        <p>No drag library. Global <code>mousemove/mouseup</code> and <code>touchmove/touchend</code> listeners on <code>window</code>, attached once via <code>useEffect</code>. Drag state held in a <code>useRef</code> (not state) to avoid stale closures in the listeners.</p>
+      </div>
+
+      <div class="feature-grid">
+        <div class="fcard">
+          <div class="fcard-head">
+            <div class="fcard-icon" style="background:rgba(91,155,255,.12)">👆</div>
+            <div class="fcard-meta">
+              <div class="fcard-name">Drag Initiation</div>
+              <div class="fcard-tag" style="color:var(--q3)">Interaction</div>
+            </div>
+          </div>
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div><code>onMouseDown</code> / <code>onTouchStart</code> on each bubble div.</div>
+            <div class="rule"><div class="rule-dot"></div>Stores: <code>id, startX, startY, origCx, origCy, rect, moved=false, clickCb</code>.</div>
+            <div class="rule"><div class="rule-dot"></div><code>clickCb</code> = function to open detail panel for that move.</div>
+            <div class="rule"><div class="rule-dot"></div>Bubble cursor: <code>grab</code>. Active: <code>grabbing</code>.</div>
+          </div>
+        </div>
+        <div class="fcard">
+          <div class="fcard-head">
+            <div class="fcard-icon" style="background:rgba(91,155,255,.12)">🔄</div>
+            <div class="fcard-meta">
+              <div class="fcard-name">Live Drag Behavior</div>
+              <div class="fcard-tag" style="color:var(--q3)">Interaction</div>
+            </div>
+          </div>
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div>Threshold: <code>moved=true</code> when delta &gt; 0.008 of canvas dimension.</div>
+            <div class="rule"><div class="rule-dot"></div>Live position stored in <code>dragOverRef</code> (ref) AND <code>dragOver</code> (state) for render.</div>
+            <div class="rule"><div class="rule-dot"></div>Bubble reads <code>dragOverride</code> prop for live position during drag.</div>
+            <div class="rule"><div class="rule-dot"></div>Bubble color updates live as it crosses quadrant boundary.</div>
+            <div class="rule"><div class="rule-dot"></div>Dragging bubble: scale 1.08, box-shadow glow, z-index 30, no animation.</div>
+            <div class="rule"><div class="rule-dot"></div>Bounds: cx clamped 0.03–0.97, cy clamped 0.03–0.97.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-grid single" style="margin-top:14px">
+        <div class="fcard">
+          <div class="fcard-name" style="margin-bottom:10px">Drop / Release</div>
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div>If <code>moved === false</code>: treat as click, call <code>clickCb()</code> to open detail panel.</div>
+            <div class="rule"><div class="rule-dot"></div>If <code>moved === true</code>: compute final quadrant from <code>qFromPos(cx, cy)</code>. Update move with new <code>cx, cy, quadrant</code>.</div>
+            <div class="rule"><div class="rule-dot"></div>Persist to storage immediately on drop via <code>setMoves_(prev => ...)</code> inside the listener (uses functional update to avoid stale state).</div>
+            <div class="rule"><div class="rule-dot"></div>Clear <code>dragRef.current</code>, <code>dragOvRef.current</code>, and <code>setDragOver(null)</code> on mouse/touch up.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. MIT STRIP -->
+    <div class="section" id="mit">
+      <div class="section-header">
+        <span class="section-num">07</span>
+        <span class="section-title">MIT Strip</span>
+      </div>
+      <div class="feature-grid single">
+        <div class="fcard">
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div>Positioned between topbar and canvas. Fixed height ~36px. Flex-shrink: 0.</div>
+            <div class="rule"><div class="rule-dot"></div>Background: subtle purple gradient. Border: 1px solid rgba(167,139,250,.13).</div>
+            <div class="rule"><div class="rule-dot"></div>Star icon (filled purple if MIT set, outline if not) + "MIT" label in muted text.</div>
+            <div class="rule"><div class="rule-dot"></div>Click anywhere on strip to enter edit mode (inline input, auto-focus).</div>
+            <div class="rule"><div class="rule-dot"></div>Enter key saves. Escape cancels. onBlur saves.</div>
+            <div class="rule"><div class="rule-dot"></div>MIT is stored per-day: key <code>cd-mit-YYYY-MM-DD</code>. Resets each new day automatically.</div>
+            <div class="rule"><div class="rule-dot"></div>Any Move can be promoted to MIT from its detail panel ("Set MIT" button).</div>
+            <div class="rule"><div class="rule-dot"></div>MIT is included in End-of-Day AI reflection and Share snapshots.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8. SPARKS -->
+    <div class="section" id="sparks">
+      <div class="section-header">
+        <span class="section-num">08</span>
+        <span class="section-title">Sparks Scratchpad</span>
+      </div>
+
+      <div class="callout callout-info">
+        <div class="callout-label">Concept</div>
+        <p>A <strong>Spark</strong> is a raw, unprocessed thought. It lives in the scratchpad until the user either discards it or promotes it to a <strong>Move</strong> on the matrix. Promotion can be manual or AI-assisted.</p>
+      </div>
+
+      <div class="flow">
+        <div class="flow-step">Type thought</div><div class="flow-arrow">→</div>
+        <div class="flow-step">Spark created</div><div class="flow-arrow">→</div>
+        <div class="flow-step">Tap ↗ icon</div><div class="flow-arrow">→</div>
+        <div class="flow-step">AI suggests quadrant</div><div class="flow-arrow">→</div>
+        <div class="flow-step">User confirms</div><div class="flow-arrow">→</div>
+        <div class="flow-step">Move placed on matrix</div>
+      </div>
+
+      <div class="feature-grid">
+        <div class="fcard">
+          <div class="fcard-name" style="margin-bottom:10px">Spark Entry</div>
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div>Accessed via ✦ icon in top-right nav bar.</div>
+            <div class="rule"><div class="rule-dot"></div>Panel slides up. Text input + Send button.</div>
+            <div class="rule"><div class="rule-dot"></div>Enter key submits. Adds to sparks array with <code>id, text, createdAt</code>.</div>
+            <div class="rule"><div class="rule-dot"></div>Sparks badge shows count on nav icon when &gt; 0.</div>
+          </div>
+        </div>
+        <div class="fcard">
+          <div class="fcard-name" style="margin-bottom:10px">↗ AI Placement</div>
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div>Single ↗ icon button per spark row. No text label. Title: "Place on matrix with AI".</div>
+            <div class="rule"><div class="rule-dot"></div>Opens SparkAI panel. Shows "AI is thinking…" in blink animation.</div>
+            <div class="rule"><div class="rule-dot"></div>AI returns: quadrant, reason, domain, refined (sharpened text), time, urgency (0-100), importance (0-100).</div>
+            <div class="rule"><div class="rule-dot"></div>Panel shows mini-matrix preview with AI placement + refined text + reason.</div>
+            <div class="rule"><div class="rule-dot"></div>User can Accept ("Add to Matrix") or Discard.</div>
+            <div class="rule"><div class="rule-dot"></div>On accept: calls <code>addMove</code>, deletes spark. Position derived from urgency/importance via <code>posFromSliders()</code>.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 9. ON HOLD -->
+    <div class="section" id="onhold">
+      <div class="section-header">
+        <span class="section-num">09</span>
+        <span class="section-title">On Hold</span>
+      </div>
+      <div class="feature-grid single">
+        <div class="fcard">
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div>Accessible via pause ⏸ icon in top bar. Count badge shows number of paused moves.</div>
+            <div class="rule"><div class="rule-dot"></div>On Hold moves remain on canvas at 38% opacity with a small pause icon overlay.</div>
+            <div class="rule"><div class="rule-dot"></div>On Hold moves can still be dragged. They remain at their position.</div>
+            <div class="rule"><div class="rule-dot"></div>On Hold panel shows list with: text, quadrant label, Resume (▶) and Vault (archive) actions.</div>
+            <div class="rule"><div class="rule-dot"></div>Resume restores status to "active", full opacity.</div>
+            <div class="rule"><div class="rule-dot"></div>Move detail panel also offers Pause/Resume as an action button.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 10. VAULT -->
+    <div class="section" id="vault">
+      <div class="section-header">
+        <span class="section-num">10</span>
+        <span class="section-title">Vault</span>
+      </div>
+
+      <div class="callout callout-warn">
+        <div class="callout-label">Soft Delete Design</div>
+        <p>Moves are never immediately deleted. They go to the Vault where they live for 60 days. After 60 days they enter an "expired" state and are eligible for permanent deletion. The user must manually confirm permanent delete.</p>
+      </div>
+
+      <div class="feature-grid">
+        <div class="fcard">
+          <div class="fcard-name" style="margin-bottom:10px">Archiving a Move</div>
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div>Available from: Move detail panel ("Vault" button) or On Hold panel (archive icon).</div>
+            <div class="rule"><div class="rule-dot"></div>Move is removed from <code>moves</code> array, added to <code>vault</code> array with <code>archivedAt: Date.now()</code>.</div>
+            <div class="rule"><div class="rule-dot"></div>Toast: "Vaulted · 60 days to recover".</div>
+            <div class="rule"><div class="rule-dot"></div>If detail panel is open for that move, it closes automatically.</div>
+          </div>
+        </div>
+        <div class="fcard">
+          <div class="fcard-name" style="margin-bottom:10px">Vault Panel</div>
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div>Dedicated 🗄 icon in top bar with count badge.</div>
+            <div class="rule"><div class="rule-dot"></div>Active items: show text, quadrant, days remaining. Color turns red when &lt;10 days left.</div>
+            <div class="rule"><div class="rule-dot"></div>"reignite" button (↩ icon + text): restores move to matrix at original position. Toast: "Restored to matrix!".</div>
+            <div class="rule"><div class="rule-dot"></div>Trash icon: permanent delete (no confirm dialog — use toast undo pattern in future).</div>
+            <div class="rule"><div class="rule-dot"></div>Expired section (≥60 days): strikethrough text, red tint, permanent delete only.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 11. MOVE DETAIL -->
+    <div class="section" id="detail">
+      <div class="section-header">
+        <span class="section-num">11</span>
+        <span class="section-title">Move Detail Panel</span>
+      </div>
+      <div class="feature-grid single">
+        <div class="fcard">
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div>Triggered by: click on bubble (when not dragged).</div>
+            <div class="rule"><div class="rule-dot"></div>Shows: full move text, quadrant badge, domain icon+label, time icon+label, on-hold badge if held.</div>
+            <div class="rule"><div class="rule-dot"></div>Urgency and importance shown as thin horizontal progress bars derived from <code>slidersFromPos(cx, cy)</code>.</div>
+            <div class="rule"><div class="rule-dot"></div>Reassign section: 3 buttons for other quadrants. On select: updates quadrant + randomizes position within new quadrant bounds. Closes panel.</div>
+            <div class="rule"><div class="rule-dot"></div>Action grid (2-col): Complete ✓ · Set MIT ★ · Pause/Resume ⏸/▶ · Vault 🗄</div>
+            <div class="rule"><div class="rule-dot"></div>"Complete" hidden if already done. "Pause" shows "Resume" if on hold.</div>
+            <div class="rule"><div class="rule-dot"></div>Set MIT: writes move text to today's MIT store. Closes panel.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 12. AI FEATURES -->
+    <div class="section" id="ai-cat">
+      <div class="section-header">
+        <span class="section-num">12</span>
+        <span class="section-title">AI Features</span>
+      </div>
+
+      <table class="spec-table">
+        <thead><tr><th>Feature</th><th>Trigger</th><th>System Prompt</th><th>Expected Output</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Spark Categorization</strong></td>
+            <td>↗ on any Spark</td>
+            <td>"Return ONLY valid JSON, no markdown."</td>
+            <td>JSON: quadrant, reason, domain, refined, time, urgency (0-100), importance (0-100)</td>
+          </tr>
+          <tr>
+            <td><strong>End-of-Day Reflection</strong></td>
+            <td>🌙 icon in topbar</td>
+            <td>"Warm productivity coach. 3-4 sentences, personal and insightful."</td>
+            <td>Plain text. Celebrate wins, spot patterns, one nudge for tomorrow. References MIT, done moves, and active moves.</td>
+          </tr>
+          <tr>
+            <td><strong>Weekly Pulse</strong></td>
+            <td>📊 icon → "This Week"</td>
+            <td>"Sharp productivity analyst. Exactly 3 numbered insights, plain text."</td>
+            <td>3 numbered insights on Eisenhower quadrant balance using last 7 days of moves.</td>
+          </tr>
+          <tr>
+            <td><strong>Monthly Pulse</strong></td>
+            <td>📊 icon → "This Month"</td>
+            <td>Same as weekly.</td>
+            <td>Same format, uses last 30 days of moves + vault.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-warn">
+        <div class="callout-label">AI Error Handling</div>
+        <p>All AI calls are wrapped in try/catch returning empty string on failure. Spark categorization has a hardcoded fallback object if JSON.parse fails. Never throw to the user — show empty state or default values silently.</p>
+      </div>
+    </div>
+
+    <!-- 13. SHARE -->
+    <div class="section" id="share">
+      <div class="section-header">
+        <span class="section-num">13</span>
+        <span class="section-title">Share via Code</span>
+      </div>
+
+      <div class="flow">
+        <div class="flow-step">Generate code</div><div class="flow-arrow">→</div>
+        <div class="flow-step">6-char code stored in shared storage</div><div class="flow-arrow">→</div>
+        <div class="flow-step">Share code verbally/message</div><div class="flow-arrow">→</div>
+        <div class="flow-step">Teammate enters code</div><div class="flow-arrow">→</div>
+        <div class="flow-step">Read-only snapshot shown</div>
+      </div>
+
+      <div class="feature-grid">
+        <div class="fcard">
+          <div class="fcard-name" style="margin-bottom:10px">Generating a Code</div>
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div>Generate button: creates random 6-char uppercase alphanumeric code via <code>Math.random().toString(36).slice(2,8).toUpperCase()</code>.</div>
+            <div class="rule"><div class="rule-dot"></div>Snapshot stored in shared storage: key <code>cd-sh-{CODE}</code>, value: <code>{moves, mit, name, ts}</code>.</div>
+            <div class="rule"><div class="rule-dot"></div>Only non-done moves included in snapshot.</div>
+            <div class="rule"><div class="rule-dot"></div>Code persisted to cfg (<code>cd-cfg</code>). Displayed large monospace. Copy button.</div>
+            <div class="rule"><div class="rule-dot"></div>Regenerate = new code, new snapshot. Old code becomes inaccessible (no delete needed — just abandoned).</div>
+          </div>
+        </div>
+        <div class="fcard">
+          <div class="fcard-name" style="margin-bottom:10px">Viewing a Code</div>
+          <div class="fcard-rules">
+            <div class="rule"><div class="rule-dot"></div>Input auto-uppercases. Max 6 chars.</div>
+            <div class="rule"><div class="rule-dot"></div>Eye button fetches <code>cd-sh-{CODE}</code> from shared storage.</div>
+            <div class="rule"><div class="rule-dot"></div>Snapshot shown inline: owner name, MIT, moves grouped by quadrant.</div>
+            <div class="rule"><div class="rule-dot"></div>Read-only. No actions. No drag. No edit.</div>
+            <div class="rule"><div class="rule-dot"></div>Not found: toast error "Code not found".</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 14. DATA & STORAGE -->
+    <div class="section" id="storage">
+      <div class="section-header">
+        <span class="section-num">14</span>
+        <span class="section-title">Data & Storage</span>
+      </div>
+
+      <table class="spec-table">
+        <thead><tr><th>Key</th><th>Shared</th><th>Contents</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>cd-mv</code></td><td>No</td><td>Array of Move objects</td><td>Primary dataset. All active + on-hold + done moves.</td></tr>
+          <tr><td><code>cd-vt</code></td><td>No</td><td>Array of Vault objects</td><td>Archived moves with <code>archivedAt</code>.</td></tr>
+          <tr><td><code>cd-sp</code></td><td>No</td><td>Array of Spark objects</td><td>Unprocessed thoughts.</td></tr>
+          <tr><td><code>cd-mit-YYYY-MM-DD</code></td><td>No</td><td>String (MIT text)</td><td>One key per day. Auto-expires naturally (old keys just unused).</td></tr>
+          <tr><td><code>cd-cfg</code></td><td>No</td><td><code>{name, code}</code></td><td>User name + current share code.</td></tr>
+          <tr><td><code>cd-sh-{CODE}</code></td><td>Yes</td><td><code>{moves, mit, name, ts}</code></td><td>Public read snapshot. Accessible to all users with code.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 15. SCHEMA -->
+    <div class="section" id="schema">
+      <div class="section-header">
+        <span class="section-num">15</span>
+        <span class="section-title">Data Schema</span>
+      </div>
+
+      <div class="schema-block">
+        <div class="schema-head"><span class="schema-title">Move</span></div>
+        <div class="schema-body">
+          <div class="schema-field"><span class="sf-name">id</span><span class="sf-type">string</span><span class="sf-desc">7-char random alphanumeric. uid().</span></div>
+          <div class="schema-field"><span class="sf-name">text</span><span class="sf-type">string</span><span class="sf-desc">Full move description. Trimmed.</span></div>
+          <div class="schema-field"><span class="sf-name">quadrant</span><span class="sf-type">"Q1"|"Q2"|"Q3"|"Q4"</span><span class="sf-desc">Derived from cx/cy. Updates on drag drop.</span></div>
+          <div class="schema-field"><span class="sf-name">domain</span><span class="sf-type">"professional"|"personal"</span><span class="sf-desc">Toggleable from bubble or detail panel.</span></div>
+          <div class="schema-field"><span class="sf-name">time</span><span class="sf-type">"quick"|"short"|"medium"|"deep"</span><span class="sf-desc">Controls bubble radius.</span></div>
+          <div class="schema-field"><span class="sf-name">status</span><span class="sf-type">"active"|"onhold"|"done"</span><span class="sf-desc">Active/onhold render on canvas. Done hidden from canvas.</span></div>
+          <div class="schema-field"><span class="sf-name">cx</span><span class="sf-type">number (0–1)</span><span class="sf-desc">Fractional X position on canvas. Persisted.</span></div>
+          <div class="schema-field"><span class="sf-name">cy</span><span class="sf-type">number (0–1)</span><span class="sf-desc">Fractional Y position on canvas. Persisted.</span></div>
+          <div class="schema-field"><span class="sf-name">createdAt</span><span class="sf-type">number</span><span class="sf-desc">Date.now() timestamp. Used for pulse date filtering.</span></div>
+          <div class="schema-field"><span class="sf-name">doneAt</span><span class="sf-type">number?</span><span class="sf-desc">Set when status → done.</span></div>
+        </div>
+      </div>
+
+      <div class="schema-block">
+        <div class="schema-head"><span class="schema-title">Vault Entry</span></div>
+        <div class="schema-body">
+          <div class="schema-field"><span class="sf-name">...Move fields</span><span class="sf-type">—</span><span class="sf-desc">All Move fields copied at time of archiving.</span></div>
+          <div class="schema-field"><span class="sf-name">archivedAt</span><span class="sf-type">number</span><span class="sf-desc">Date.now() at time of vault. Used for 60-day countdown.</span></div>
+        </div>
+      </div>
+
+      <div class="schema-block">
+        <div class="schema-head"><span class="schema-title">Spark</span></div>
+        <div class="schema-body">
+          <div class="schema-field"><span class="sf-name">id</span><span class="sf-type">string</span><span class="sf-desc">7-char uid.</span></div>
+          <div class="schema-field"><span class="sf-name">text</span><span class="sf-type">string</span><span class="sf-desc">Raw user thought.</span></div>
+          <div class="schema-field"><span class="sf-name">createdAt</span><span class="sf-type">number</span><span class="sf-desc">Timestamp.</span></div>
+        </div>
+      </div>
+
+      <div class="schema-block">
+        <div class="schema-head"><span class="schema-title">Key Helper Functions</span></div>
+        <div class="schema-body">
+          <div class="schema-field"><span class="sf-name">qFromPos(cx,cy)</span><span class="sf-type">→ "Q1"|...|"Q4"</span><span class="sf-desc">cx&gt;0.5, cy&lt;0.5 → Q1. cx&lt;0.5, cy&lt;0.5 → Q2. cx&gt;0.5, cy&gt;0.5 → Q3. cx&lt;0.5, cy&gt;0.5 → Q4.</span></div>
+          <div class="schema-field"><span class="sf-name">posFromSliders(urg,imp)</span><span class="sf-type">→ {cx, cy}</span><span class="sf-desc">cx = 0.05 + (urg/100)*0.9. cy = 0.05 + ((100-imp)/100)*0.9.</span></div>
+          <div class="schema-field"><span class="sf-name">slidersFromPos(cx,cy)</span><span class="sf-type">→ {urgency, importance}</span><span class="sf-desc">Inverse of posFromSliders. Clamped 5–95. Used to pre-fill sliders from tap position.</span></div>
+          <div class="schema-field"><span class="sf-name">getR(time)</span><span class="sf-type">→ number</span><span class="sf-desc">Returns radius: quick=20, short=29, medium=38, deep=50.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- END NOTE -->
+    <div style="border-top:1px solid var(--br); padding-top:32px; margin-top:16px;">
+      <div style="font-size:11px; color:var(--mu); line-height:1.8;">
+        <strong style="color:var(--ac)">Implementation Notes for VS Code</strong><br/>
+        1. Replace <code>window.storage</code> with a <code>localStorage</code> wrapper using the same async API shape.<br/>
+        2. AI calls require an API key — use a Vite proxy (<code>vite.config.js</code> server.proxy) or inject via <code>import.meta.env.VITE_ANTHROPIC_KEY</code> and send as <code>x-api-key</code> header.<br/>
+        3. Google Fonts import works via <code>@import url()</code> inside the injected <code>&lt;style&gt;</code> tag — no config needed.<br/>
+        4. ResizeObserver on the canvas ref works natively — no polyfill needed for modern browsers.<br/>
+        5. Touch events work as-is on mobile. Test drag on iOS Safari — <code>e.cancelable</code> check before <code>preventDefault()</code> is already in place.<br/>
+        6. Single file: all components, styles, helpers, and the default export in one <code>App.jsx</code>. No file splitting required.
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // Smooth scroll + active nav
+  const items = document.querySelectorAll('.nav-item');
+  items.forEach(item => {
+    item.addEventListener('click', function(e) {
+      items.forEach(i => i.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+
+  // Highlight active section on scroll
+  const sections = document.querySelectorAll('.section');
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 80) current = s.id;
+    });
+    items.forEach(i => {
+      i.classList.toggle('active', i.getAttribute('href') === '#'+current);
+    });
+  }, {passive:true});
+</script>
+</body>
+</html>
