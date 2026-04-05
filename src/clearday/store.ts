@@ -131,11 +131,12 @@ function normalizeTagList(input: string[]): string[] {
 
 function normalizeQuadrantLabels(input?: Partial<Record<Quadrant, string>>): Record<Quadrant, string> {
   const next: Record<Quadrant, string> = { ...DEFAULT_QUADRANT_LABELS };
+  const legacyFix: Record<string, string> = { Eliminat: 'Eliminate', Delegat: 'Delegate' };
   (Object.keys(DEFAULT_QUADRANT_LABELS) as Quadrant[]).forEach((quadrant) => {
     const raw = input?.[quadrant];
     const clean = raw?.trim();
     if (!clean) return;
-    next[quadrant] = clean.slice(0, QUADRANT_LABEL_MAX_LENGTH);
+    next[quadrant] = (legacyFix[clean] ?? clean).slice(0, QUADRANT_LABEL_MAX_LENGTH);
   });
   return next;
 }

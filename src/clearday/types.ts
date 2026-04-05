@@ -7,7 +7,7 @@ export type ExpiryDefault = 'off' | 'on_60d';
 export const DEFAULT_TAGS = ['Professional', 'Personal'] as const;
 export const TAG_MAX_LENGTH = 12;
 export const AGENDA_TITLE_MAX_LENGTH = 80;
-export const QUADRANT_LABEL_MAX_LENGTH = 8;
+export const QUADRANT_LABEL_MAX_LENGTH = 12;
 export const DEFAULT_QUADRANT_LABELS: Record<Quadrant, string> = {
   Q1: 'Do Now',
   Q2: 'Schedule',

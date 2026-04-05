@@ -239,8 +239,8 @@ function Bubble({
         },
       ]}
     >
-      <Text numberOfLines={1} style={[styles.bubbleText, { color: tokens.text, fontSize: r >= 38 ? 10 : 9.5 }]}>
-        {summarizeBubble(agenda.text, agenda.time, r >= 38 ? 25 : r >= 29 ? 20 : 14)}
+      <Text numberOfLines={r >= 38 ? 2 : 1} style={[styles.bubbleText, { color: tokens.text, fontSize: r >= 38 ? 10 : 9.5 }]}>
+        {summarizeBubble(agenda.text, agenda.time, r >= 38 ? 32 : r >= 29 ? 22 : 16)}
       </Text>
       {agenda.status === 'onhold' && <Text style={styles.holdOverlay}>⏸</Text>}
     </AnimatedPressable>
@@ -280,21 +280,23 @@ function createStyles(t: ThemeTokens, formal: boolean) {
     badgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
 
     mitStrip: {
-      minHeight: 40,
+      minHeight: 52,
       marginBottom: 8,
-      borderRadius: 12,
+      borderRadius: 14,
       backgroundColor: t.surface2,
       borderWidth: 1,
       borderColor: t.border,
+      borderLeftWidth: 3,
+      borderLeftColor: t.accent,
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: 12,
       gap: 8,
     },
-    mitStar: { color: t.accent, fontSize: 14 },
-    mitText: { color: t.text, fontSize: 12, flex: 1 },
-    mitPlaceholder: { color: `${t.muted}CC`, fontSize: 10.5, flex: 1 },
-    mitInput: { color: t.text, flex: 1, paddingVertical: 6 },
+    mitStar: { color: t.accent, fontSize: 16 },
+    mitText: { color: t.text, fontSize: 13, fontWeight: '600', flex: 1, lineHeight: 18 },
+    mitPlaceholder: { color: t.muted, fontSize: 12, flex: 1, lineHeight: 17 },
+    mitInput: { color: t.text, flex: 1, paddingVertical: 6, fontSize: 13, fontWeight: '600' },
     filterRow: { marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 },
     filterSegs: { flexDirection: 'row', gap: 5, flex: 1 },
     filterBtn: {
@@ -307,9 +309,9 @@ function createStyles(t: ThemeTokens, formal: boolean) {
       justifyContent: 'center',
       backgroundColor: t.surface2,
     },
-    filterBtnActive: { borderColor: `${t.accent}66`, backgroundColor: `${t.accent}0D` },
+    filterBtnActive: { borderColor: `${t.accent}99`, backgroundColor: `${t.accent}18` },
     filterBtnText: { color: t.muted, fontSize: 10, fontWeight: '500' },
-    filterBtnTextActive: { color: t.text },
+    filterBtnTextActive: { color: t.accent, fontWeight: '700' },
 
     matrix: {
       flex: 1,
@@ -320,10 +322,10 @@ function createStyles(t: ThemeTokens, formal: boolean) {
       position: 'relative',
       overflow: 'hidden',
     },
-    qOverlayTL: { position: 'absolute', left: 0, top: 0, width: '50%', height: '50%', backgroundColor: 'rgba(46,204,143,0.03)' },
-    qOverlayTR: { position: 'absolute', right: 0, top: 0, width: '50%', height: '50%', backgroundColor: 'rgba(255,92,92,0.03)' },
-    qOverlayBL: { position: 'absolute', left: 0, bottom: 0, width: '50%', height: '50%', backgroundColor: 'rgba(107,107,130,0.025)' },
-    qOverlayBR: { position: 'absolute', right: 0, bottom: 0, width: '50%', height: '50%', backgroundColor: 'rgba(91,155,255,0.025)' },
+    qOverlayTL: { position: 'absolute', left: 0, top: 0, width: '50%', height: '50%', backgroundColor: 'rgba(46,204,143,0.04)' },
+    qOverlayTR: { position: 'absolute', right: 0, top: 0, width: '50%', height: '50%', backgroundColor: 'rgba(255,92,92,0.08)' },
+    qOverlayBL: { position: 'absolute', left: 0, bottom: 0, width: '50%', height: '50%', backgroundColor: 'rgba(107,107,130,0.03)' },
+    qOverlayBR: { position: 'absolute', right: 0, bottom: 0, width: '50%', height: '50%', backgroundColor: 'rgba(91,155,255,0.035)' },
     axisH: { position: 'absolute', left: 0, right: 0, top: '50%', height: 2, opacity: 0.78 },
     axisV: { position: 'absolute', top: 0, bottom: 0, left: '50%', width: 2, opacity: 0.78 },
     axisEdgeLabel: { position: 'absolute', color: t.muted, fontSize: 9, letterSpacing: 0.3, opacity: 0.9 },
@@ -331,7 +333,7 @@ function createStyles(t: ThemeTokens, formal: boolean) {
     axisTickHRight: { position: 'absolute', right: 14, top: '50%', width: 6, height: 2, marginTop: -1, backgroundColor: t.axis },
     axisTickVTop: { position: 'absolute', top: 14, left: '50%', width: 2, height: 6, marginLeft: -1, backgroundColor: t.axis },
     axisTickVBottom: { position: 'absolute', bottom: 14, left: '50%', width: 2, height: 6, marginLeft: -1, backgroundColor: t.axis },
-    watermark: { position: 'absolute', fontSize: 10, opacity: 0.13, fontWeight: '600' },
+    watermark: { position: 'absolute', fontSize: 11, opacity: 0.48, fontWeight: '700', letterSpacing: 0.5 },
 
     bubble: {
       position: 'absolute',
@@ -340,7 +342,7 @@ function createStyles(t: ThemeTokens, formal: boolean) {
       paddingHorizontal: 4,
       overflow: 'hidden',
     },
-    bubbleText: { fontSize: 10, textAlign: 'center', fontWeight: '500', width: '86%' },
+    bubbleText: { fontSize: 10, textAlign: 'center', fontWeight: '500', width: '86%', lineHeight: 13 },
     holdOverlay: { position: 'absolute', right: 4, top: 4, color: t.text, fontSize: 10 },
 
     toast: {
@@ -386,11 +388,22 @@ function createStyles(t: ThemeTokens, formal: boolean) {
       maxHeight: '82%',
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
-      padding: 14,
+      paddingTop: 10,
+      paddingHorizontal: 14,
+      paddingBottom: 14,
       width: '100%',
       backgroundColor: t.surface2,
       borderTopWidth: 1,
       borderColor: t.border,
+    },
+    sheetHandle: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: t.border,
+      alignSelf: 'center',
+      marginBottom: 12,
+      opacity: 0.7,
     },
     panelScrollContent: { paddingBottom: 30, paddingRight: 0 },
 
@@ -484,19 +497,25 @@ function createStyles(t: ThemeTokens, formal: boolean) {
       justifyContent: 'center',
       backgroundColor: t.surface,
     },
-    domainBtnActive: { borderColor: t.accent, backgroundColor: `${t.accent}1A` },
+    domainBtnActive: { borderColor: t.accent, backgroundColor: `${t.accent}28` },
     domainBtnText: { color: t.text, fontSize: 12, fontWeight: '600' },
+    domainBtnTextActive: { color: t.accent, fontWeight: '700' },
 
     submitBtn: {
-      height: 40,
-      borderRadius: 12,
+      height: 48,
+      borderRadius: 14,
       backgroundColor: t.accent,
       alignItems: 'center',
       justifyContent: 'center',
-      marginTop: 4,
+      marginTop: 6,
+      shadowColor: t.accent,
+      shadowOpacity: 0.45,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 5,
     },
-    disabled: { opacity: 0.35 },
-    submitText: { color: '#fff', fontWeight: '700' },
+    disabled: { opacity: 0.32 },
+    submitText: { color: '#fff', fontWeight: '700', fontSize: 14, letterSpacing: 0.2 },
 
     moveText: { color: t.text, fontSize: 13, lineHeight: 19, marginBottom: 8 },
     mutedLine: { color: t.muted, fontSize: 11, marginBottom: 6, lineHeight: 16 },
@@ -658,6 +677,8 @@ function createStyles(t: ThemeTokens, formal: boolean) {
     },
     tinyBtnText: { color: t.text, fontSize: 11, fontWeight: '600' },
     actionGridCentered: { justifyContent: 'center', alignItems: 'center' },
+    pulseInsightRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 8, borderTopWidth: 1, borderTopColor: t.border },
+    pulseInsightDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: t.accent, marginTop: 5, flexShrink: 0 },
   });
 }
 
@@ -1128,10 +1149,10 @@ export function ClearDayScreen() {
           <Text style={[styles.axisEdgeLabel, { right: 10, top: '50%', marginTop: 6 }]}>Urgency High</Text>
           <Text style={[styles.axisEdgeLabel, { left: '50%', marginLeft: -36, top: 10 }]}>Importance High</Text>
           <Text style={[styles.axisEdgeLabel, { left: '50%', marginLeft: -34, bottom: 10 }]}>Importance Low</Text>
-          <Text style={[styles.watermark, { color: QUADRANT_META.Q1.color, right: 12, top: 8 }]}>{getQuadrantName('Q1').toUpperCase()}</Text>
-          <Text style={[styles.watermark, { color: QUADRANT_META.Q2.color, left: 12, top: 8 }]}>{getQuadrantName('Q2').toUpperCase()}</Text>
-          <Text style={[styles.watermark, { color: QUADRANT_META.Q3.color, right: 12, bottom: 8 }]}>{getQuadrantName('Q3').toUpperCase()}</Text>
-          <Text style={[styles.watermark, { color: QUADRANT_META.Q4.color, left: 12, bottom: 8 }]}>{getQuadrantName('Q4').toUpperCase()}</Text>
+          <Text style={[styles.watermark, { color: QUADRANT_META.Q1.color, right: 14, top: 24 }]}>{getQuadrantName('Q1').toUpperCase()}</Text>
+          <Text style={[styles.watermark, { color: QUADRANT_META.Q2.color, left: 14, top: 24 }]}>{getQuadrantName('Q2').toUpperCase()}</Text>
+          <Text style={[styles.watermark, { color: QUADRANT_META.Q3.color, right: 14, bottom: 24 }]}>{getQuadrantName('Q3').toUpperCase()}</Text>
+          <Text style={[styles.watermark, { color: QUADRANT_META.Q4.color, left: 14, bottom: 24 }]}>{getQuadrantName('Q4').toUpperCase()}</Text>
 
           {activeOnCanvasAgendas.map((agenda) => (
             <Bubble
@@ -1335,15 +1356,14 @@ export function ClearDayScreen() {
             </View>
 
             <View style={styles.segmentRow}>
-              {config.tags.map((tag) => (
-                <TouchableOpacity
-                  key={tag}
-                  style={[styles.domainBtn, newDomain.toLowerCase() === tag.toLowerCase() && styles.domainBtnActive]}
-                  onPress={() => setNewDomain(tag)}
-                >
-                  <Text style={styles.domainBtnText}>{tag}</Text>
-                </TouchableOpacity>
-              ))}
+              {config.tags.map((tag) => {
+                const isActive = newDomain.toLowerCase() === tag.toLowerCase();
+                return (
+                  <TouchableOpacity key={tag} style={[styles.domainBtn, isActive && styles.domainBtnActive]} onPress={() => setNewDomain(tag)}>
+                    <Text style={[styles.domainBtnText, isActive && styles.domainBtnTextActive]}>{tag}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             <TouchableOpacity disabled={!newText.trim()} style={[styles.submitBtn, !newText.trim() && styles.disabled]} onPress={submitAgenda}>
@@ -1416,15 +1436,14 @@ export function ClearDayScreen() {
               />
             </View>
             <View style={styles.segmentRow}>
-              {config.tags.map((tag) => (
-                <TouchableOpacity
-                  key={tag}
-                  style={[styles.domainBtn, editDomain.toLowerCase() === tag.toLowerCase() && styles.domainBtnActive]}
-                  onPress={() => setEditDomain(tag)}
-                >
-                  <Text style={styles.domainBtnText}>{tag}</Text>
-                </TouchableOpacity>
-              ))}
+              {config.tags.map((tag) => {
+                const isActive = editDomain.toLowerCase() === tag.toLowerCase();
+                return (
+                  <TouchableOpacity key={tag} style={[styles.domainBtn, isActive && styles.domainBtnActive]} onPress={() => setEditDomain(tag)}>
+                    <Text style={[styles.domainBtnText, isActive && styles.domainBtnTextActive]}>{tag}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
             <ActionBtn
               label="Save Edits"
@@ -1772,29 +1791,38 @@ export function ClearDayScreen() {
         )}
 
         {panel === 'pulse' && (
-          <View>
+          <ScrollView contentContainerStyle={styles.panelScrollContent}>
             <Text style={styles.panelTitle}>Pulse</Text>
-            <View style={styles.rowGap}>
+            <View style={[styles.rowGap, { marginBottom: 14 }]}>
               <ActionBtn label="This Week" onPress={async () => runPulse('week')} />
               <ActionBtn label="This Month" onPress={async () => runPulse('month')} />
             </View>
             {weeklyPulse && (
               <View style={styles.suggestionCard}>
-                <Text style={styles.smallLabel}>{weeklyPulse.title}</Text>
+                <Text style={[styles.smallLabel, { marginBottom: 10 }]}>{weeklyPulse.title}</Text>
                 {weeklyPulse.lines.map((line) => (
-                  <Text key={line} style={styles.mutedLine}>{line}</Text>
+                  <View key={line} style={styles.pulseInsightRow}>
+                    <View style={styles.pulseInsightDot} />
+                    <Text style={[styles.mutedLine, { flex: 1, marginBottom: 0 }]}>{line}</Text>
+                  </View>
                 ))}
               </View>
             )}
             {monthlyPulse && (
-              <View style={styles.suggestionCard}>
-                <Text style={styles.smallLabel}>{monthlyPulse.title}</Text>
+              <View style={[styles.suggestionCard, { marginTop: 10 }]}>
+                <Text style={[styles.smallLabel, { marginBottom: 10 }]}>{monthlyPulse.title}</Text>
                 {monthlyPulse.lines.map((line) => (
-                  <Text key={line} style={styles.mutedLine}>{line}</Text>
+                  <View key={line} style={styles.pulseInsightRow}>
+                    <View style={styles.pulseInsightDot} />
+                    <Text style={[styles.mutedLine, { flex: 1, marginBottom: 0 }]}>{line}</Text>
+                  </View>
                 ))}
               </View>
             )}
-          </View>
+            {!weeklyPulse && !monthlyPulse && (
+              <Text style={styles.mutedLine}>Tap a button above to generate your pulse.</Text>
+            )}
+          </ScrollView>
         )}
 
         {panel === 'settings' && (
@@ -1846,29 +1874,30 @@ export function ClearDayScreen() {
                 </TouchableOpacity>
               </View>
               <Text style={styles.settingsLabel}>Tags</Text>
-              {config.tags.map((tag) => (
-                <View key={tag} style={styles.tagRow}>
-                  <TextInput
-                    value={tagDrafts[tag] ?? tag}
-                    onChangeText={(value) =>
-                      setTagDrafts((prev) => ({
-                        ...prev,
-                        [tag]: value,
-                      }))
-                    }
-                    style={styles.tagInput}
-                    placeholder="Tag name"
-                    placeholderTextColor={tokens.muted}
-                    maxLength={TAG_MAX_LENGTH}
-                  />
-                  <TouchableOpacity style={styles.tinyBtn} onPress={() => onSaveTagRename(tag)}>
-                    <Text style={styles.tinyBtnText}>Save</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.tinyBtn} onPress={() => onRemoveTag(tag)}>
-                    <Text style={styles.tinyBtnText}>Remove</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
+              {config.tags.map((tag) => {
+                const draft = tagDrafts[tag] ?? tag;
+                const isDirty = draft !== tag;
+                return (
+                  <View key={tag} style={styles.tagRow}>
+                    <TextInput
+                      value={draft}
+                      onChangeText={(value) => setTagDrafts((prev) => ({ ...prev, [tag]: value }))}
+                      style={styles.tagInput}
+                      placeholder="Tag name"
+                      placeholderTextColor={tokens.muted}
+                      maxLength={TAG_MAX_LENGTH}
+                    />
+                    {isDirty && (
+                      <TouchableOpacity style={[styles.tinyBtn, { borderColor: tokens.accent }]} onPress={() => onSaveTagRename(tag)}>
+                        <Text style={[styles.tinyBtnText, { color: tokens.accent }]}>Save</Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity style={styles.tinyBtn} onPress={() => onRemoveTag(tag)}>
+                      <Text style={styles.tinyBtnText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
               {config.tags.length < 4 && (
                 <View style={styles.tagRow}>
                   <TextInput
@@ -1931,7 +1960,10 @@ function BottomPanel({ visible, onClose, children }: { visible: boolean; onClose
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />
       <View style={styles.sheetWrap}>
-        <View style={[styles.sheet, { width: panelWidth }]}>{children}</View>
+        <View style={[styles.sheet, { width: panelWidth }]}>
+          <View style={styles.sheetHandle} />
+          {children}
+        </View>
       </View>
     </Modal>
   );
