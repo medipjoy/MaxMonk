@@ -41,13 +41,18 @@ export async function runMigrationIfNeeded(): Promise<void> {
     return;
   }
 
-  const web = await getLegacyWebTasks();
-  const native = await getLegacyNativeTasks();
-  const source = web.length > 0 ? web : native;
+  try {
+    const web = await getLegacyWebTasks();
+    const native = await getLegacyNativeTasks().catch(() => []);
+    const source = web.length > 0 ? web : native;
 
-  if (source.length > 0) {
-    const migrated = source.map(mapLegacyTask);
-    await saveAgendas(migrated);
+    if (source.length > 0) {
+      const migrated = source.map(mapLegacyTask);
+      await saveAgendas(migrated);
+    }
+  } catch (err) {
+    // Migration may fail on web due to SQLite not being available
+    // This is OK - web users won't have legacy data anyway
   }
 
   await saveConfig({ ...cfg, migratedV1: true });

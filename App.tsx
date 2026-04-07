@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, useColorScheme } from 'react-native';
+import { View, Text, useColorScheme, Platform } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -23,6 +23,7 @@ import {
   PlusJakartaSans_500Medium,
   PlusJakartaSans_600SemiBold,
 } from '@expo-google-fonts/plus-jakarta-sans';
+// @ts-ignore - Web builds skip this
 import { useClearDayStore } from './src/clearday/store';
 import { ClarityApp } from './src/clearday/ClarityApp';
 

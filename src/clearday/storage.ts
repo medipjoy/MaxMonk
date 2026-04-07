@@ -119,8 +119,7 @@ export async function getLegacyWebTasks(): Promise<any[]> {
 export async function getLegacyNativeTasks(): Promise<any[]> {
   if (Platform.OS === 'web') return [];
   try {
-    const SQLite = await import('expo-sqlite');
-    const db = await SQLite.openDatabaseAsync('maxmonk.db');
+    const db = await (require('./sqliteWeb') as typeof import('./sqliteWeb')).openDatabaseAsync('maxmonk.db');
     const rows = await db.getAllAsync('SELECT * FROM tasks ORDER BY createdAt DESC');
     return (rows ?? []) as any[];
   } catch {
