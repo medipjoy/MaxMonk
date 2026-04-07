@@ -10,31 +10,23 @@ import { NavCtx } from '../clearday/ClarityApp';
 
 interface Props { tokens: ThemeTokens; fontChoice: string; }
 
-const Q_ORDER = ['Q1', 'Q2', 'Q3', 'Q4'];
-const Q_LABEL: Record<string, string> = { Q1: 'DO NOW · Q1', Q2: 'SCHEDULE · Q2', Q3: 'DELEGATE · Q3', Q4: 'ELIMINATE · Q4' };
-
 function qColor(q: string, tokens: ThemeTokens) {
   switch (q) { case 'Q1': return tokens.q1; case 'Q2': return tokens.q2; case 'Q3': return tokens.q3; default: return tokens.q4; }
 }
 
-export function ActiveScreen({ tokens, fontChoice }: Props) {
+export function HoldScreen({ tokens, fontChoice }: Props) {
   const insets = useSafeAreaInsets();
   const fonts = getFontSet(fontChoice as any);
   const nav = useContext(NavCtx);
   const { agendas, toggleHold, archiveAgenda } = useClearDayStore();
-
-  const active = agendas.filter(a => a.status === 'active');
-  const grouped: Record<string, typeof active> = {};
-  Q_ORDER.forEach(q => { grouped[q] = active.filter(a => a.quadrant === q); });
+  const onHold = agendas.filter(a => a.status === 'onhold');
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top },
     header: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: tokens.border },
     backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-    title: { fontFamily: fonts.serif, fontSize: moderateScale(22), color: tokens.text, fontWeight: '300', letterSpacing: -0.3, marginLeft: 4 },
+    title: { fontFamily: fonts.serif, fontSize: moderateScale(22), color: tokens.text, fontWeight: '300', letterSpacing: -0.3 },
     scroll: { flex: 1 },
-    sectionHeader: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
-    sectionLabel: { fontFamily: 'Inter_500Medium', fontSize: moderateScale(7.5), color: tokens.textGhost, textTransform: 'uppercase', letterSpacing: 0.1 * moderateScale(7.5) },
     row: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: tokens.border },
     dot: { width: 4, height: 4, borderRadius: 2, marginRight: 12 },
     rowText: { flex: 1, fontFamily: fonts.serif, fontSize: moderateScale(12), color: tokens.text },
@@ -48,44 +40,32 @@ export function ActiveScreen({ tokens, fontChoice }: Props) {
   return (
     <View style={s.container}>
       <View style={s.header}>
-        <TouchableOpacity style={s.backBtn} onPress={nav.back} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity style={s.backBtn} onPress={nav.back}>
           <Svg width={16} height={16} viewBox="0 0 16 16">
             <Line x1={10} y1={3} x2={5} y2={8} stroke={tokens.accent} strokeWidth={1.5} strokeLinecap="round" />
             <Line x1={5} y1={8} x2={10} y2={13} stroke={tokens.accent} strokeWidth={1.5} strokeLinecap="round" />
           </Svg>
         </TouchableOpacity>
-        <Text style={s.title}>Active</Text>
+        <Text style={s.title}>On Hold</Text>
       </View>
-
-      {active.length === 0 ? (
-        <View style={s.empty}><Text style={s.emptyText}>Nothing active. Add something.</Text></View>
+      {onHold.length === 0 ? (
+        <View style={s.empty}><Text style={s.emptyText}>Nothing paused. Everything in motion.</Text></View>
       ) : (
         <ScrollView style={s.scroll}>
-          {Q_ORDER.map(q => {
-            const items = grouped[q];
-            if (!items.length) return null;
-            return (
-              <View key={q}>
-                <View style={s.sectionHeader}>
-                  <Text style={s.sectionLabel}>{Q_LABEL[q]}</Text>
-                </View>
-                {items.map(agenda => (
-                  <TouchableOpacity key={agenda.id} style={s.row} onPress={() => { nav.setBubbleActionId(agenda.id); nav.openPanel('bubbleAction'); }}>
-                    <View style={[s.dot, { backgroundColor: qColor(q, tokens) }]} />
-                    <Text style={s.rowText} numberOfLines={1}>{agenda.text}</Text>
-                    <View style={s.rowBtns}>
-                      <TouchableOpacity style={s.rowBtn} onPress={() => toggleHold(agenda.id)}>
-                        <Text style={s.rowBtnText}>⏸</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={s.rowBtn} onPress={() => archiveAgenda(agenda.id)}>
-                        <Text style={s.rowBtnText}>⊡</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+          {onHold.map(agenda => (
+            <TouchableOpacity key={agenda.id} style={s.row} onPress={() => { nav.setBubbleActionId(agenda.id); nav.openPanel('bubbleAction'); }}>
+              <View style={[s.dot, { backgroundColor: qColor(agenda.quadrant, tokens) }]} />
+              <Text style={s.rowText} numberOfLines={1}>{agenda.text}</Text>
+              <View style={s.rowBtns}>
+                <TouchableOpacity style={s.rowBtn} onPress={() => toggleHold(agenda.id)}>
+                  <Text style={s.rowBtnText}>▶</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.rowBtn} onPress={() => archiveAgenda(agenda.id)}>
+                  <Text style={s.rowBtnText}>⊡</Text>
+                </TouchableOpacity>
               </View>
-            );
-          })}
+            </TouchableOpacity>
+          ))}
         </ScrollView>
       )}
     </View>

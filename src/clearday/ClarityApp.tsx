@@ -1,198 +1,355 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
-  SafeAreaView,
   StyleSheet,
-  TouchableWithoutFeedback,
   Animated,
+  TouchableWithoutFeedback,
   Platform,
-  Text,
+  Dimensions,
+  useColorScheme,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useClearDayStore } from './store';
-import { useNavigation } from './navigation';
-import { resolveTheme, ThemeMode } from './theme';
-import { FloatingPill } from '../components/FloatingPill';
+import { resolveTheme } from './theme';
+
+// Screens
 import { MatrixScreen } from '../screens/MatrixScreen';
 import { ActiveScreen } from '../screens/ActiveScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
-import { Dimensions } from 'react-native';
+import { HoldScreen } from '../screens/HoldScreen';
+import { VaultScreen } from '../screens/VaultScreen';
+import { ReflectionScreen } from '../screens/ReflectionScreen';
+
+// Panels / sheets
+import { AddEditSheet } from '../components/AddEditSheet';
+import { BubbleActionSheet } from '../components/BubbleActionSheet';
+import { SparksSheet } from '../components/SparksSheet';
+import { MoreSheet } from '../components/MoreSheet';
+import { MITSelector } from '../components/MITSelector';
+import { MITCarryForwardModal } from '../components/MITCarryForwardModal';
+import { Toast } from '../components/Toast';
+
+// Navigation types
+export type Screen = 'matrix' | 'active' | 'hold' | 'vault' | 'reflect' | 'settings';
+export type Panel = 'add' | 'edit' | 'sparks' | 'more' | 'mitSelector' | 'bubbleAction' | null;
+
+export interface AddSheetPreset { urgency: number; importance: number }
+export interface BubbleActionTarget { agendaId: string }
 
 interface ClarityAppProps {
-  themeMode: ThemeMode;
   systemScheme: 'light' | 'dark' | null;
 }
 
-export const ClarityApp: React.FC<ClarityAppProps> = ({ themeMode, systemScheme }) => {
+export interface NavContext {
+  screen: Screen;
+  panel: Panel;
+  goTo: (s: Screen) => void;
+  openPanel: (p: Panel) => void;
+  closePanel: () => void;
+  back: () => void;
+  addSheetPreset: AddSheetPreset | null;
+  setAddSheetPreset: (p: AddSheetPreset | null) => void;
+  editAgendaId: string | null;
+  setEditAgendaId: (id: string | null) => void;
+  bubbleActionId: string | null;
+  setBubbleActionId: (id: string | null) => void;
+  showToast: (msg: string) => void;
+  themeMode: string;
+  systemScheme: 'light' | 'dark' | null;
+}
+
+export const NavCtx = React.createContext<NavContext>({} as NavContext);
+
+export function ClarityApp({ systemScheme }: ClarityAppProps) {
+  const { config, ready, bootstrap, mit, setMit } = useClearDayStore();
   const insets = useSafeAreaInsets();
-  const { currentScreen, currentPanel, back, closePanel } = useNavigation();
-  const tokens = resolveTheme(themeMode, systemScheme);
+
+  const [screen, setScreen] = useState<Screen>('matrix');
+  const [panel, setPanel] = useState<Panel>(null);
+  const [addSheetPreset, setAddSheetPreset] = useState<AddSheetPreset | null>(null);
+  const [editAgendaId, setEditAgendaId] = useState<string | null>(null);
+  const [bubbleActionId, setBubbleActionId] = useState<string | null>(null);
+  const [showMITCarryForward, setShowMITCarryForward] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
+  const [toastVisible, setToastVisible] = useState(false);
+  const toastTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // Pill visibility (mobile: touch-triggered, web: mouse-triggered)
+  const pillOpacity = useRef(new Animated.Value(0)).current;
+  const pillTimer = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => { bootstrap(); }, []);
+
+  // MIT carry-forward check
+  useEffect(() => {
+    if (!ready) return;
+    checkMITCarryForward();
+  }, [ready]);
+
+  async function checkMITCarryForward() {
+    const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+    const lastShown = await AsyncStorage.getItem('@clarity_mit_carry_shown_date');
+    const today = new Date().toDateString();
+    if (lastShown === today) return;
+
+    const lastMITDate = await AsyncStorage.getItem('@clarity_mit_last_set_date');
+    const lastMITText = await AsyncStorage.getItem('@clarity_mit_text');
+    if (!lastMITDate || !lastMITText) return;
+
+    const lastDate = new Date(lastMITDate).toDateString();
+    if (lastDate === today) return; // set today, no carry needed
+
+    // Check if that agenda is still active
+    const { agendas } = useClearDayStore.getState();
+    const stillActive = agendas.some(a => a.text === lastMITText && a.status === 'active');
+    if (!stillActive) return;
+
+    setShowMITCarryForward(true);
+    await AsyncStorage.setItem('@clarity_mit_carry_shown_date', today);
+  }
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setToastVisible(true);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToastVisible(false), 2000);
+  };
+
+  const goTo = (s: Screen) => { setScreen(s); setPanel(null); };
+  const openPanel = (p: Panel) => setPanel(p);
+  const closePanel = () => {
+    setPanel(null);
+    setEditAgendaId(null);
+    setBubbleActionId(null);
+    setAddSheetPreset(null);
+  };
+  const back = () => { setScreen('matrix'); setPanel(null); };
+
+  const tokens = resolveTheme(config.themeMode, systemScheme);
   const { width } = Dimensions.get('window');
   const isWide = width >= 768;
 
-  const [pillVisible, setPillVisible] = useState(false);
-  const [mouseActive, setMouseActive] = useState(false);
-  const fadeOutTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handleMatrixTouch = () => {
-    if (Platform.OS === 'web') return; // Web uses mouse enter/leave
-    setPillVisible(true);
-
-    if (fadeOutTimerRef.current) clearTimeout(fadeOutTimerRef.current);
-    fadeOutTimerRef.current = setTimeout(() => {
-      setPillVisible(false);
+  // Pill show/hide
+  const showPill = () => {
+    if (panel) return;
+    Animated.timing(pillOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    if (pillTimer.current) clearTimeout(pillTimer.current);
+    pillTimer.current = setTimeout(() => {
+      Animated.timing(pillOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start();
     }, 2500);
   };
 
-  const handleMouseEnter = () => {
-    if (Platform.OS !== 'web') return;
-    setMouseActive(true);
-    if (fadeOutTimerRef.current) clearTimeout(fadeOutTimerRef.current);
+  const isPillScreenActive = screen === 'matrix' && !panel;
+
+  const navCtx: NavContext = {
+    screen, panel, goTo, openPanel, closePanel, back,
+    addSheetPreset, setAddSheetPreset,
+    editAgendaId, setEditAgendaId,
+    bubbleActionId, setBubbleActionId,
+    showToast,
+    themeMode: config.themeMode,
+    systemScheme,
   };
 
-  const handleMouseLeave = () => {
-    if (Platform.OS !== 'web') return;
-    if (fadeOutTimerRef.current) clearTimeout(fadeOutTimerRef.current);
-    fadeOutTimerRef.current = setTimeout(() => {
-      setMouseActive(false);
-    }, 2500);
+  const renderScreen = () => {
+    switch (screen) {
+      case 'active': return <ActiveScreen tokens={tokens} fontChoice={config.fontChoice} />;
+      case 'hold': return <HoldScreen tokens={tokens} fontChoice={config.fontChoice} />;
+      case 'vault': return <VaultScreen tokens={tokens} fontChoice={config.fontChoice} />;
+      case 'reflect': return <ReflectionScreen tokens={tokens} fontChoice={config.fontChoice} />;
+      case 'settings': return <SettingsScreen tokens={tokens} fontChoice={config.fontChoice} themeMode={config.themeMode} matrixStyle={config.matrixStyle} mitResetHour={config.mitResetHour} />;
+      default: return (
+        <TouchableWithoutFeedback onPress={showPill}>
+          <View style={{ flex: 1 }}>
+            <MatrixScreen tokens={tokens} fontChoice={config.fontChoice} matrixStyle={config.matrixStyle} />
+          </View>
+        </TouchableWithoutFeedback>
+      );
+    }
   };
 
-  const styles = StyleSheet.create({
-    root: {
-      flex: 1,
-      backgroundColor: tokens.bg,
-    },
-    safeContainer: {
-      flex: 1,
-    },
-    content: {
-      flex: 1,
-    },
-    matrixContainer: {
-      flex: 1,
-    },
-    sidebar: {
-      width: 220,
-      backgroundColor: tokens.surface,
-      borderRightColor: tokens.border,
-      borderRightWidth: 1,
-    },
-    mainContent: {
-      flex: 1,
-    },
-    layoutRow: {
+  const s = StyleSheet.create({
+    root: { flex: 1, backgroundColor: tokens.bg },
+    wide: { flex: 1, flexDirection: 'row' },
+    sidebar: { width: 220, backgroundColor: tokens.surface, borderRightWidth: 1, borderRightColor: tokens.border },
+    main: { flex: 1 },
+    pill: {
+      position: 'absolute',
+      bottom: 18 + insets.bottom,
+      alignSelf: 'center',
       flexDirection: 'row',
-      flex: 1,
+      alignItems: 'center',
+      backgroundColor: tokens.bg === '#F8F7F4' ? 'rgba(248,246,242,0.94)' : 'rgba(9,11,17,0.92)',
+      borderWidth: tokens.bg === '#F8F7F4' ? 0.5 : 1,
+      borderColor: tokens.bg === '#F8F7F4' ? 'rgba(0,0,0,0.13)' : 'rgba(255,255,255,0.08)',
+      borderRadius: 28,
+      paddingVertical: 9,
+      paddingHorizontal: 20,
+      gap: 20,
     },
   });
 
-  const renderScreen = () => {
-    switch (currentScreen) {
-      case 'matrix':
-        return <MatrixScreen themeMode={themeMode} systemScheme={systemScheme} />;
-      case 'active':
-        return <ActiveScreen themeMode={themeMode} systemScheme={systemScheme} />;
-      case 'more':
-        // More screen placeholder
-        return (
-          <SafeAreaView style={styles.safeContainer}>
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <Text>More Screen (Section 3.3)</Text>
-            </View>
-          </SafeAreaView>
-        );
-      default:
-        return <MatrixScreen themeMode={themeMode} systemScheme={systemScheme} />;
-    }
-  };
-
-  const renderPanel = () => {
-    if (!currentPanel) return null;
-
-    const panelStyles = StyleSheet.create({
-      modalOverlay: {
-        position: 'absolute' as const,
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: tokens.overlay,
-      },
-      sheet: {
-        position: 'absolute' as const,
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: tokens.surface,
-        borderTopLeftRadius: 16,
-        borderTopRightRadius: 16,
-        padding: 16,
-        minHeight: 200,
-      },
-    });
-
-    return (
-      <TouchableWithoutFeedback onPress={() => closePanel?.()}>
-        <View style={panelStyles.modalOverlay}>
-          <TouchableWithoutFeedback>
-            <View style={panelStyles.sheet}>
-              <Text style={{ color: tokens.text, fontSize: 16, fontWeight: '600' }}>
-                {currentPanel === 'settings' && 'Settings'}
-                {currentPanel === 'add' && 'Add Agenda'}
-                {currentPanel === 'detail' && 'Edit Agenda'}
-                {currentPanel === 'sparks' && 'Sparks'}
-                {!['settings', 'add', 'detail', 'sparks'].includes(currentPanel) && currentPanel}
-              </Text>
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
-    );
-  };
-
-  const renderContent = () => {
-    if (isWide) {
-      // Tablet/Web layout with sidebar
-      return (
-        <View style={styles.layoutRow}>
-          <View style={styles.sidebar}>
-            {/* Sidebar navigation */}
+  return (
+    <NavCtx.Provider value={navCtx}>
+      <View style={s.root}>
+        {isWide ? (
+          <View style={s.wide}>
+            <Sidebar tokens={tokens} fontChoice={config.fontChoice} screen={screen} goTo={goTo} openPanel={openPanel} />
+            <View style={s.main}>{renderScreen()}</View>
           </View>
-          <View style={styles.mainContent}>
+        ) : (
+          <>
             {renderScreen()}
-            {!isWide && currentPanel === null && (
-              <FloatingPill
-                themeMode={themeMode}
-                systemScheme={systemScheme}
-                visible={pillVisible || mouseActive}
-                onTouchStart={handleMatrixTouch}
-              />
+            {isPillScreenActive && (
+              <Animated.View style={[s.pill, { opacity: pillOpacity }]} pointerEvents="box-none">
+                <PillIcons screen={screen} tokens={tokens} goTo={goTo} openPanel={openPanel} />
+              </Animated.View>
             )}
-          </View>
-        </View>
-      );
-    } else {
-      // Mobile layout
-      return (
-        <View style={styles.content}>
-          {renderScreen()}
-          {currentPanel === null && (
-            <FloatingPill
-              themeMode={themeMode}
-              systemScheme={systemScheme}
-              visible={pillVisible || mouseActive}
-              onTouchStart={handleMatrixTouch}
-            />
-          )}
-        </View>
-      );
-    }
-  };
+          </>
+        )}
+
+        {/* Panels / Sheets */}
+        {panel === 'more' && <MoreSheet tokens={tokens} fontChoice={config.fontChoice} />}
+        {panel === 'mitSelector' && <MITSelector tokens={tokens} fontChoice={config.fontChoice} currentMit={mit} onSelect={(t) => { setMit(t); closePanel(); showToast(t ? 'MIT set' : 'MIT cleared'); }} onClose={closePanel} />}
+        {(panel === 'add' || panel === 'edit') && <AddEditSheet tokens={tokens} fontChoice={config.fontChoice} agendaId={editAgendaId} preset={addSheetPreset} onClose={closePanel} onSave={(msg) => { closePanel(); showToast(msg); }} />}
+        {panel === 'sparks' && <SparksSheet tokens={tokens} fontChoice={config.fontChoice} onClose={closePanel} />}
+        {panel === 'bubbleAction' && bubbleActionId && <BubbleActionSheet tokens={tokens} fontChoice={config.fontChoice} agendaId={bubbleActionId} onClose={closePanel} onAction={(msg) => { closePanel(); showToast(msg); }} onEdit={(id) => { setEditAgendaId(id); setPanel('edit'); }} />}
+
+        {/* MIT carry-forward modal */}
+        {showMITCarryForward && (
+          <MITCarryForwardModal
+            tokens={tokens}
+            fontChoice={config.fontChoice}
+            onCarry={() => { setShowMITCarryForward(false); }}
+            onDismiss={() => { setMit(''); setShowMITCarryForward(false); }}
+          />
+        )}
+
+        {/* Toast */}
+        <Toast tokens={tokens} fontChoice={config.fontChoice} message={toastMsg} visible={toastVisible} bottomOffset={insets.bottom} />
+      </View>
+    </NavCtx.Provider>
+  );
+}
+
+// --- Floating Pill Icons ---
+function PillIcons({ screen, tokens, goTo, openPanel }: { screen: Screen; tokens: any; goTo: (s: Screen) => void; openPanel: (p: Panel) => void }) {
+  const isMatrix = screen === 'matrix';
+  const isActive = screen === 'active';
+
+  const iconColor = (active: boolean) => active ? tokens.accent : tokens.textGhost;
+  const indicatorColor = tokens.accent;
 
   return (
-    <SafeAreaView style={styles.root}>
-      <View style={styles.content}>{renderContent()}</View>
-    </SafeAreaView>
+    <>
+      {/* Crosshair — Matrix */}
+      <PillButton onPress={() => goTo('matrix')} active={isMatrix} indicatorColor={indicatorColor}>
+        <CrosshairIcon color={iconColor(isMatrix)} size={16} />
+      </PillButton>
+
+      {/* List — Active */}
+      <PillButton onPress={() => goTo('active')} active={isActive} indicatorColor={indicatorColor}>
+        <ListIcon color={iconColor(isActive)} size={16} />
+      </PillButton>
+
+      {/* Dots — More */}
+      <PillButton onPress={() => openPanel('more')} active={false} indicatorColor={indicatorColor}>
+        <DotsIcon color={iconColor(false)} size={16} />
+      </PillButton>
+    </>
   );
-};
+}
+
+function PillButton({ onPress, active, indicatorColor, children }: { onPress: () => void; active: boolean; indicatorColor: string; children: React.ReactNode }) {
+  return (
+    <TouchableWithoutFeedback onPress={onPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+      <View style={{ width: 28, height: 28, justifyContent: 'center', alignItems: 'center' }}>
+        {active && (
+          <View style={{ position: 'absolute', top: -2, width: 16, height: 2, backgroundColor: indicatorColor, borderRadius: 1 }} />
+        )}
+        {children}
+      </View>
+    </TouchableWithoutFeedback>
+  );
+}
+
+// --- Sidebar (wide screens) ---
+function Sidebar({ tokens, fontChoice, screen, goTo, openPanel }: { tokens: any; fontChoice: string; screen: Screen; goTo: (s: Screen) => void; openPanel: (p: Panel) => void }) {
+  const isMatrix = screen === 'matrix';
+  const isActive = screen === 'active';
+
+  const s = StyleSheet.create({
+    nav: { paddingTop: 32, flex: 1 },
+    item: { height: 48, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, gap: 12 },
+    activeBar: { position: 'absolute', left: 0, top: 12, bottom: 12, width: 2, backgroundColor: tokens.accent, borderRadius: 1 },
+    label: { fontFamily: 'Inter_500Medium', fontSize: 12, color: tokens.textMuted },
+    activeLabel: { color: tokens.accent },
+    divider: { height: 0.5, backgroundColor: tokens.border, marginVertical: 8, marginHorizontal: 20 },
+    subItem: { height: 36, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, gap: 10 },
+    subLabel: { fontFamily: 'Cormorant_Garamond_400Regular', fontSize: 14, color: tokens.text },
+  });
+
+  return (
+    <View style={{ width: 220, backgroundColor: tokens.surface, borderRightWidth: 1, borderRightColor: tokens.border }}>
+      <View style={s.nav}>
+        <TouchableWithoutFeedback onPress={() => goTo('matrix')}>
+          <View style={s.item}>
+            {isMatrix && <View style={s.activeBar} />}
+            <CrosshairIcon color={isMatrix ? tokens.accent : tokens.textGhost} size={16} />
+            <View style={[s.label as any, isMatrix && (s.activeLabel as any)]} />
+          </View>
+        </TouchableWithoutFeedback>
+        <TouchableWithoutFeedback onPress={() => goTo('active')}>
+          <View style={s.item}>
+            {isActive && <View style={s.activeBar} />}
+            <ListIcon color={isActive ? tokens.accent : tokens.textGhost} size={16} />
+          </View>
+        </TouchableWithoutFeedback>
+        <View style={s.divider} />
+        {(['reflect', 'hold', 'vault', 'settings'] as Screen[]).map(s2 => (
+          <TouchableWithoutFeedback key={s2} onPress={() => goTo(s2)}>
+            <View style={s.subItem}>
+              <View style={[s.subLabel as any, screen === s2 && { color: tokens.accent }]}>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// Inline SVG icons using react-native-svg
+import Svg, { Line, Circle, Rect } from 'react-native-svg';
+
+function CrosshairIcon({ color, size }: { color: string; size: number }) {
+  const c = size / 2;
+  return (
+    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <Line x1={0} y1={c} x2={size} y2={c} stroke={color} strokeWidth={1.5} />
+      <Line x1={c} y1={0} x2={c} y2={size} stroke={color} strokeWidth={1.5} />
+    </Svg>
+  );
+}
+
+function ListIcon({ color, size }: { color: string; size: number }) {
+  const gap = size / 4;
+  return (
+    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <Line x1={gap} y1={gap} x2={size - gap} y2={gap} stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <Line x1={gap} y1={size / 2} x2={size - gap} y2={size / 2} stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <Line x1={gap} y1={size - gap} x2={size - gap} y2={size - gap} stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function DotsIcon({ color, size }: { color: string; size: number }) {
+  const r = size * 0.08;
+  return (
+    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <Circle cx={size * 0.25} cy={size / 2} r={r} fill={color} />
+      <Circle cx={size / 2} cy={size / 2} r={r} fill={color} />
+      <Circle cx={size * 0.75} cy={size / 2} r={r} fill={color} />
+    </Svg>
+  );
+}

@@ -1,118 +1,155 @@
-import React from 'react';
-import { View, SafeAreaView, StyleSheet, TouchableOpacity, Text, ScrollView } from 'react-native';
-import { useNavigation } from '../clearday/navigation';
-import { resolveTheme, ThemeMode } from '../clearday/theme';
+import React, { useContext, useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line } from 'react-native-svg';
+import { useClearDayStore } from '../clearday/store';
+import { ThemeTokens, ThemeMode, MatrixStyle } from '../clearday/theme';
+import { getFontSet } from '../clearday/fonts';
+import { moderateScale } from '../clearday/scale';
+import { NavCtx } from '../clearday/ClarityApp';
 
-interface SettingsScreenProps {
+interface Props {
+  tokens: ThemeTokens;
+  fontChoice: string;
   themeMode: ThemeMode;
-  systemScheme: 'light' | 'dark' | null;
+  matrixStyle: MatrixStyle;
+  mitResetHour: number;
 }
 
-export const SettingsScreen: React.FC<SettingsScreenProps> = ({ themeMode, systemScheme }) => {
-  const tokens = resolveTheme(themeMode, systemScheme);
-  const { back } = useNavigation();
+function OptionSelector<T extends string>({ options, value, onChange, tokens, fonts }: { options: T[]; value: T; onChange: (v: T) => void; tokens: ThemeTokens; fonts: any }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: 10 }}>
+      {options.map(opt => {
+        const active = opt === value;
+        return (
+          <TouchableOpacity key={opt} onPress={() => onChange(opt)}>
+            <Text style={{
+              fontFamily: fonts.serif,
+              fontSize: moderateScale(12),
+              color: active ? tokens.text : tokens.textGhost,
+              borderBottomWidth: active ? 1 : 0,
+              borderBottomColor: tokens.text,
+              paddingBottom: active ? 1 : 0,
+              textTransform: 'capitalize',
+            }}>{opt}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
 
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: tokens.bg,
-    },
-    header: {
-      height: 44,
-      borderBottomColor: tokens.border,
-      borderBottomWidth: 0.5,
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 16,
-    },
-    backButton: {
-      width: 44,
-      height: 44,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    content: {
-      flex: 1,
-      paddingHorizontal: 16,
-      paddingVertical: 16,
-    },
-    section: {
-      marginBottom: 24,
-    },
-    sectionTitle: {
-      fontSize: 12,
-      color: tokens.textGhost,
-      letterSpacing: 0.05,
-      marginBottom: 12,
-      fontWeight: '600',
-    },
-    item: {
-      paddingVertical: 12,
-      borderBottomColor: tokens.border,
-      borderBottomWidth: 0.5,
-    },
-    itemText: {
-      fontSize: 14,
-      color: tokens.text,
-    },
+const FONT_LABELS: Record<string, string> = { cormorant: 'Cg', baskerville: 'Lb', inter: 'In', jakarta: 'Pj' };
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const HOUR_LABEL = (h: number) => h === 0 ? '12:00 am' : h < 12 ? `${h}:00 am` : h === 12 ? '12:00 pm' : `${h - 12}:00 pm`;
+
+export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mitResetHour }: Props) {
+  const insets = useSafeAreaInsets();
+  const fonts = getFontSet(fontChoice as any);
+  const nav = useContext(NavCtx);
+  const { config, setThemeMode, setTags, agendas, vault } = useClearDayStore();
+  const store = useClearDayStore();
+
+  // Proxy setters via store (we add these to action functions)
+  const setMatrixStyle = async (style: MatrixStyle) => {
+    const newCfg = { ...config, matrixStyle: style };
+    await (store as any).saveConfig?.(newCfg) ?? store.setThemeMode(config.themeMode); // fallback
+    useClearDayStore.setState({ config: newCfg });
+  };
+
+  const setFontChoice = async (font: string) => {
+    const newCfg = { ...config, fontChoice: font as any };
+    useClearDayStore.setState({ config: newCfg });
+  };
+
+  const setMitResetHour = async (h: number) => {
+    const newCfg = { ...config, mitResetHour: h };
+    useClearDayStore.setState({ config: newCfg });
+  };
+
+  const holdCount = agendas.filter(a => a.status === 'onhold').length;
+  const archiveCount = vault.length;
+
+  const TAGLINE = `Most people confuse being busy with being productive. The Eisenhower Matrix changes that. By sorting tasks into four clear quadrants, you stop reacting to noise and start investing your time where it genuinely creates impact and drives meaning.`;
+
+  const s = StyleSheet.create({
+    container: { flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top },
+    header: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: tokens.border },
+    backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+    title: { fontFamily: fonts.serif, fontSize: moderateScale(22), color: tokens.text, fontWeight: '300', letterSpacing: -0.3 },
+    scroll: { flex: 1 },
+    sectionLabel: { fontFamily: 'Inter_500Medium', fontSize: moderateScale(7), color: tokens.textGhost, textTransform: 'uppercase', letterSpacing: 0.12 * moderateScale(7), paddingHorizontal: 16, paddingTop: 20, paddingBottom: 6 },
+    row: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: tokens.border, justifyContent: 'space-between' },
+    rowLabel: { fontFamily: fonts.serif, fontSize: moderateScale(12), color: tokens.text },
+    rowValue: { fontFamily: fonts.serif, fontSize: moderateScale(12), color: tokens.textMuted },
+    helpText: { fontFamily: fonts.serifItalic, fontSize: moderateScale(8), color: tokens.textGhost, lineHeight: moderateScale(8) * 1.5, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 10 },
+    tagline: { fontFamily: fonts.serifItalic, fontSize: moderateScale(8), color: tokens.textGhost, lineHeight: moderateScale(8) * 1.6, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 40 },
   });
 
+  const fontOptions = ['cormorant', 'baskerville', 'inter', 'jakarta'] as const;
+
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header with back button */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={back}>
-          <Svg width={14} height={14} viewBox="0 0 14 14">
-            <Line x1="10" y1="2" x2="4" y2="7" stroke={tokens.accent} strokeWidth="1.5" />
-            <Line x1="4" y1="7" x2="10" y2="12" stroke={tokens.accent} strokeWidth="1.5" />
+    <View style={s.container}>
+      <View style={s.header}>
+        <TouchableOpacity style={s.backBtn} onPress={nav.back}>
+          <Svg width={16} height={16} viewBox="0 0 16 16">
+            <Line x1={10} y1={3} x2={5} y2={8} stroke={tokens.accent} strokeWidth={1.5} strokeLinecap="round" />
+            <Line x1={5} y1={8} x2={10} y2={13} stroke={tokens.accent} strokeWidth={1.5} strokeLinecap="round" />
           </Svg>
         </TouchableOpacity>
+        <Text style={s.title}>Settings</Text>
       </View>
 
-      {/* Content */}
-      <ScrollView style={styles.content}>
-        {/* Appearance Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>APPEARANCE</Text>
-          <View style={styles.item}>
-            <Text style={styles.itemText}>Theme Mode (Section 9.1)</Text>
-          </View>
-          <View style={styles.item}>
-            <Text style={styles.itemText}>Font Choice</Text>
-          </View>
-          <View style={styles.item}>
-            <Text style={styles.itemText}>Matrix Style</Text>
+      <ScrollView style={s.scroll}>
+        {/* Appearance */}
+        <Text style={s.sectionLabel}>Appearance</Text>
+        <View style={s.row}>
+          <Text style={s.rowLabel}>Theme</Text>
+          <OptionSelector options={['light', 'dark', 'system'] as ThemeMode[]} value={themeMode} onChange={v => setThemeMode(v)} tokens={tokens} fonts={fonts} />
+        </View>
+        <View style={s.row}>
+          <Text style={s.rowLabel}>Style</Text>
+          <OptionSelector options={['tinted', 'editorial', 'paper'] as MatrixStyle[]} value={matrixStyle} onChange={setMatrixStyle} tokens={tokens} fonts={fonts} />
+        </View>
+        <View style={s.row}>
+          <Text style={s.rowLabel}>Font</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {fontOptions.map(f => {
+              const active = fontChoice === f;
+              return (
+                <TouchableOpacity key={f} onPress={() => setFontChoice(f)}>
+                  <Text style={{ fontFamily: fonts.serif, fontSize: moderateScale(12), color: active ? tokens.text : tokens.textGhost, borderBottomWidth: active ? 1 : 0, borderBottomColor: tokens.text, paddingBottom: active ? 1 : 0 }}>
+                    {FONT_LABELS[f]}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
-        {/* Today's Focus Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>TODAY'S FOCUS</Text>
-          <View style={styles.item}>
-            <Text style={styles.itemText}>MIT Reset Hour (Section 9.2)</Text>
-          </View>
+        {/* Today's Focus */}
+        <Text style={s.sectionLabel}>Today's Focus</Text>
+        <View style={s.row}>
+          <Text style={s.rowLabel}>MIT resets at</Text>
+          <Text style={s.rowValue}>{HOUR_LABEL(mitResetHour)}</Text>
         </View>
+        <Text style={s.helpText}>MIT = Most Important Task. Your top agenda wins the day.</Text>
 
-        {/* Categories Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>CATEGORIES</Text>
-          <View style={styles.item}>
-            <Text style={styles.itemText}>Manage Tags (Section 9.3)</Text>
-          </View>
-        </View>
+        {/* Manage */}
+        <Text style={s.sectionLabel}>Manage</Text>
+        <TouchableOpacity style={s.row} onPress={() => nav.goTo('hold')}>
+          <Text style={s.rowLabel}>On Hold</Text>
+          <Text style={s.rowValue}>{holdCount} items →</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.row} onPress={() => nav.goTo('vault')}>
+          <Text style={s.rowLabel}>Archive</Text>
+          <Text style={s.rowValue}>{archiveCount} items →</Text>
+        </TouchableOpacity>
 
-        {/* Manage Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>MANAGE</Text>
-          <View style={styles.item}>
-            <Text style={styles.itemText}>Export Data</Text>
-          </View>
-          <View style={styles.item}>
-            <Text style={styles.itemText}>Clear All</Text>
-          </View>
-        </View>
+        {/* Clarity footer */}
+        <Text style={s.sectionLabel}>Clarity</Text>
+        <Text style={s.tagline}>{TAGLINE}</Text>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
-};
+}
