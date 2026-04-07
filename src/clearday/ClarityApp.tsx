@@ -12,6 +12,7 @@ import { useClearDayStore } from './store';
 import { useNavigation } from './navigation';
 import { resolveTheme, ThemeMode } from './theme';
 import { FloatingPill } from '../components/FloatingPill';
+import { MatrixScreen } from '../screens/MatrixScreen';
 import { Dimensions } from 'react-native';
 
 interface ClarityAppProps {
@@ -83,25 +84,10 @@ export const ClarityApp: React.FC<ClarityAppProps> = ({ themeMode, systemScheme 
     },
   });
 
-  // Placeholder screens - will be replaced with actual implementations
-  const MatrixScreen = () => (
-    <TouchableWithoutFeedback onPress={handleMatrixTouch}>
-      <View style={styles.matrixContainer}>
-        {/* Matrix content will be implemented in Section 6 */}
-      </View>
-    </TouchableWithoutFeedback>
-  );
-
-  const ActiveScreen = () => (
+  const ActiveScreenComponent = () => (
     <SafeAreaView style={styles.safeContainer}>
       {/* Active list will be implemented in Section 8 */}
     </SafeAreaView>
-  );
-
-  const MoreSheet = () => (
-    <View style={styles.content}>
-      {/* More sheet will be implemented */}
-    </View>
   );
 
   const renderContent = () => {
@@ -113,7 +99,11 @@ export const ClarityApp: React.FC<ClarityAppProps> = ({ themeMode, systemScheme 
             {/* Sidebar navigation */}
           </View>
           <View style={styles.mainContent}>
-            {currentScreen === 'matrix' ? <MatrixScreen /> : <ActiveScreen />}
+            {currentScreen === 'matrix' ? (
+              <MatrixScreen themeMode={themeMode} systemScheme={systemScheme} />
+            ) : (
+              <ActiveScreenComponent />
+            )}
             {!isWide && currentPanel === null && (
               <FloatingPill
                 themeMode={themeMode}
@@ -129,7 +119,11 @@ export const ClarityApp: React.FC<ClarityAppProps> = ({ themeMode, systemScheme 
       // Mobile layout
       return (
         <View style={styles.content}>
-          {currentScreen === 'matrix' ? <MatrixScreen /> : <ActiveScreen />}
+          {currentScreen === 'matrix' ? (
+            <MatrixScreen themeMode={themeMode} systemScheme={systemScheme} />
+          ) : (
+            <ActiveScreenComponent />
+          )}
           {currentPanel === null && (
             <FloatingPill
               themeMode={themeMode}
