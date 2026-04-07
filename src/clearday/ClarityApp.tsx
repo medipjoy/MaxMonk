@@ -6,6 +6,7 @@ import {
   TouchableWithoutFeedback,
   Animated,
   Platform,
+  Text,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useClearDayStore } from './store';
@@ -13,6 +14,8 @@ import { useNavigation } from './navigation';
 import { resolveTheme, ThemeMode } from './theme';
 import { FloatingPill } from '../components/FloatingPill';
 import { MatrixScreen } from '../screens/MatrixScreen';
+import { ActiveScreen } from '../screens/ActiveScreen';
+import { SettingsScreen } from '../screens/SettingsScreen';
 import { Dimensions } from 'react-native';
 
 interface ClarityAppProps {
@@ -22,7 +25,7 @@ interface ClarityAppProps {
 
 export const ClarityApp: React.FC<ClarityAppProps> = ({ themeMode, systemScheme }) => {
   const insets = useSafeAreaInsets();
-  const { currentScreen, currentPanel, back } = useNavigation();
+  const { currentScreen, currentPanel, back, closePanel } = useNavigation();
   const tokens = resolveTheme(themeMode, systemScheme);
   const { width } = Dimensions.get('window');
   const isWide = width >= 768;
@@ -84,11 +87,69 @@ export const ClarityApp: React.FC<ClarityAppProps> = ({ themeMode, systemScheme 
     },
   });
 
-  const ActiveScreenComponent = () => (
-    <SafeAreaView style={styles.safeContainer}>
-      {/* Active list will be implemented in Section 8 */}
-    </SafeAreaView>
-  );
+  const renderScreen = () => {
+    switch (currentScreen) {
+      case 'matrix':
+        return <MatrixScreen themeMode={themeMode} systemScheme={systemScheme} />;
+      case 'active':
+        return <ActiveScreen themeMode={themeMode} systemScheme={systemScheme} />;
+      case 'more':
+        // More screen placeholder
+        return (
+          <SafeAreaView style={styles.safeContainer}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <Text>More Screen (Section 3.3)</Text>
+            </View>
+          </SafeAreaView>
+        );
+      default:
+        return <MatrixScreen themeMode={themeMode} systemScheme={systemScheme} />;
+    }
+  };
+
+  const renderPanel = () => {
+    if (!currentPanel) return null;
+
+    const panelStyles = StyleSheet.create({
+      modalOverlay: {
+        position: 'absolute' as const,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: tokens.overlay,
+      },
+      sheet: {
+        position: 'absolute' as const,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: tokens.surface,
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        padding: 16,
+        minHeight: 200,
+      },
+    });
+
+    return (
+      <TouchableWithoutFeedback onPress={() => closePanel?.()}>
+        <View style={panelStyles.modalOverlay}>
+          <TouchableWithoutFeedback>
+            <View style={panelStyles.sheet}>
+              <Text style={{ color: tokens.text, fontSize: 16, fontWeight: '600' }}>
+                {currentPanel === 'settings' && 'Settings'}
+                {currentPanel === 'add' && 'Add Agenda'}
+                {currentPanel === 'detail' && 'Edit Agenda'}
+                {currentPanel === 'sparks' && 'Sparks'}
+                {!['settings', 'add', 'detail', 'sparks'].includes(currentPanel) && currentPanel}
+              </Text>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    );
+  };
 
   const renderContent = () => {
     if (isWide) {
@@ -99,11 +160,7 @@ export const ClarityApp: React.FC<ClarityAppProps> = ({ themeMode, systemScheme 
             {/* Sidebar navigation */}
           </View>
           <View style={styles.mainContent}>
-            {currentScreen === 'matrix' ? (
-              <MatrixScreen themeMode={themeMode} systemScheme={systemScheme} />
-            ) : (
-              <ActiveScreenComponent />
-            )}
+            {renderScreen()}
             {!isWide && currentPanel === null && (
               <FloatingPill
                 themeMode={themeMode}
@@ -119,11 +176,7 @@ export const ClarityApp: React.FC<ClarityAppProps> = ({ themeMode, systemScheme 
       // Mobile layout
       return (
         <View style={styles.content}>
-          {currentScreen === 'matrix' ? (
-            <MatrixScreen themeMode={themeMode} systemScheme={systemScheme} />
-          ) : (
-            <ActiveScreenComponent />
-          )}
+          {renderScreen()}
           {currentPanel === null && (
             <FloatingPill
               themeMode={themeMode}
