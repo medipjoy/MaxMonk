@@ -1,12 +1,10 @@
-import 'react-native-gesture-handler';
 import React from 'react';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { ClearDayScreen } from './src/screens/ClearDayScreen';
+import { View, Text } from 'react-native';
 
 export default function App() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ClearDayScreen />
-    </GestureHandlerRootView>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Text>Loading...</Text>
+    </View>
   );
 }
