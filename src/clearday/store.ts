@@ -159,7 +159,7 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
   config: {
     name: 'Me',
     migratedV1: false,
-    themeMode: 'system',
+    themeMode: 'light',
     vaultExpiryDefault: 'on_60d',
     holdExpiryDefault: 'off',
     tags: [...DEFAULT_TAGS],

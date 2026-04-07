@@ -61,7 +61,7 @@ export async function loadConfig(): Promise<AppConfig> {
   return getItem<AppConfig>(STORAGE_KEYS.config, {
     name: 'Me',
     migratedV1: false,
-    themeMode: 'system',
+    themeMode: 'light',
     vaultExpiryDefault: 'on_60d',
     holdExpiryDefault: 'off',
     tags: [...DEFAULT_TAGS],
