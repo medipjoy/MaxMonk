@@ -3,6 +3,8 @@ export type AgendaDomain = string;
 export type AgendaTime = 'quick' | 'short' | 'medium' | 'deep';
 export type AgendaStatus = 'active' | 'onhold' | 'done';
 export type ThemeMode = 'system' | 'light' | 'dark';
+export type MatrixStyle = 'tinted' | 'editorial' | 'paper';
+export type FontChoice = 'cormorant' | 'baskerville' | 'inter' | 'jakarta';
 export type ExpiryDefault = 'off' | 'on_60d';
 export const DEFAULT_TAGS = ['Professional', 'Personal'] as const;
 export const TAG_MAX_LENGTH = 12;
@@ -47,6 +49,9 @@ export interface AppConfig {
   holdExpiryDefault: ExpiryDefault;
   tags: string[];
   quadrantLabels: Record<Quadrant, string>;
+  fontChoice: FontChoice;        // default: 'cormorant'
+  matrixStyle: MatrixStyle;      // default: 'tinted'
+  mitResetHour: number;          // default: 0  (midnight, 0–23)
 }
 
 export interface SparkSuggestion {

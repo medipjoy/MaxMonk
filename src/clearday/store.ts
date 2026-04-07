@@ -164,6 +164,9 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     holdExpiryDefault: 'off',
     tags: [...DEFAULT_TAGS],
     quadrantLabels: { ...DEFAULT_QUADRANT_LABELS },
+    fontChoice: 'cormorant',
+    matrixStyle: 'tinted',
+    mitResetHour: 0,
   },
   reflection: '',
   weeklyPulse: null,
@@ -187,6 +190,9 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
       holdExpiryDefault: rawConfig.holdExpiryDefault || 'off',
       tags,
       quadrantLabels: normalizeQuadrantLabels(rawConfig.quadrantLabels),
+      fontChoice: rawConfig.fontChoice || 'cormorant',
+      matrixStyle: rawConfig.matrixStyle || 'tinted',
+      mitResetHour: rawConfig.mitResetHour ?? 0,
     };
     const normalizedAgendas = loadedAgendas.map((a) => ({ ...a, domain: resolveTag(a.domain, tags) }));
     const normalizedVault = loadedVault.map((v) => ({ ...v, domain: resolveTag(v.domain, tags) }));

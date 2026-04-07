@@ -66,6 +66,9 @@ export async function loadConfig(): Promise<AppConfig> {
     holdExpiryDefault: 'off',
     tags: [...DEFAULT_TAGS],
     quadrantLabels: { ...DEFAULT_QUADRANT_LABELS },
+    fontChoice: 'cormorant',
+    matrixStyle: 'tinted',
+    mitResetHour: 0,
   });
 }
 
