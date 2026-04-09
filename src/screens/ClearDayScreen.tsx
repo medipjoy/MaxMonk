@@ -375,6 +375,197 @@ export function ClearDayScreen({ tokens, fontChoice, matrixStyle, onPillToggle }
         </View>
       )}
 
+      {/* Active List */}
+      {panel === 'agendaList' && (
+        <View style={s.panel}>
+          <View style={s.panelMinimalHeader}>
+            <View style={s.dragHandle} />
+          </View>
+          <ScrollView contentContainerStyle={s.panelScrollContent}>
+            <Text style={s.panelTitle}>Active</Text>
+            {['Q1', 'Q2', 'Q3', 'Q4'].map((quad) => {
+              const quadAgendas = agendas.filter((a) => a.status === 'active' && a.quadrant === quad as Quadrant);
+              if (quadAgendas.length === 0) return null;
+              return (
+                <View key={quad}>
+                  <Text style={s.groupHeader}>{getQuadrantName(quad as Quadrant)}</Text>
+                  {quadAgendas.map((agenda) => (
+                    <View key={agenda.id} style={s.listRow}>
+                      <View style={[s.listDot, { backgroundColor: QUADRANT_META[agenda.quadrant].color }]} />
+                      <Text style={s.listItemText} numberOfLines={1}>{agenda.text}</Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setSelectedAgendaId(agenda.id);
+                          setPanel('detail');
+                        }}
+                        style={s.listActionBtn}
+                      >
+                        <Text style={s.listActionBtnText}>⋯</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={async () => {
+                          await toggleHold(agenda.id);
+                          showToast('Moved to On Hold');
+                        }}
+                        style={s.listActionBtn}
+                      >
+                        <Text style={s.listActionBtnText}>⏸</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={async () => {
+                          Alert.alert('Delete?', 'Move to Deleted?', [
+                            { text: 'Cancel', onPress: () => {} },
+                            { text: 'Delete', onPress: async () => {
+                              await bulkDelete([agenda.id]);
+                              showToast('Moved to Deleted');
+                            }, style: 'destructive' },
+                          ]);
+                        }}
+                        style={s.listActionBtn}
+                      >
+                        <Text style={s.listActionBtnText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              );
+            })}
+            <TouchableOpacity
+              style={s.addListBtn}
+              onPress={() => {
+                setNewText('');
+                setNewUrgency(50);
+                setNewImportance(50);
+                setPanel('add');
+              }}
+            >
+              <Text style={s.addListBtnText}>+ Add</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      )}
+
+      {/* On Hold List */}
+      {panel === 'holdList' && (
+        <View style={s.panel}>
+          <View style={s.panelMinimalHeader}>
+            <View style={s.dragHandle} />
+          </View>
+          <ScrollView contentContainerStyle={s.panelScrollContent}>
+            <Text style={s.panelTitle}>On Hold</Text>
+            {agendas.filter((a) => a.status === 'onhold').length === 0 ? (
+              <Text style={s.emptyStateText}>Nothing on hold.</Text>
+            ) : (
+              agendas.filter((a) => a.status === 'onhold').map((agenda) => (
+                <View key={agenda.id} style={s.listRow}>
+                  <View style={[s.listDot, { backgroundColor: QUADRANT_META[agenda.quadrant].color }]} />
+                  <Text style={s.listItemText} numberOfLines={1}>{agenda.text}</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedAgendaId(agenda.id);
+                      setPanel('detail');
+                    }}
+                    style={s.listActionBtn}
+                  >
+                    <Text style={s.listActionBtnText}>⋯</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      await toggleHold(agenda.id);
+                      showToast('Moved to Active');
+                    }}
+                    style={s.listActionBtn}
+                  >
+                    <Text style={s.listActionBtnText}>↻</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      Alert.alert('Delete?', 'Move to Deleted?', [
+                        { text: 'Cancel', onPress: () => {} },
+                        { text: 'Delete', onPress: async () => {
+                          await bulkDelete([agenda.id]);
+                          showToast('Moved to Deleted');
+                        }, style: 'destructive' },
+                      ]);
+                    }}
+                    style={s.listActionBtn}
+                  >
+                    <Text style={s.listActionBtnText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))
+            )}
+            <TouchableOpacity
+              style={s.addListBtn}
+              onPress={() => {
+                setNewText('');
+                setNewUrgency(50);
+                setNewImportance(50);
+                setNewDomain('Professional');
+                setNewTime('short');
+                setPanel('add');
+              }}
+            >
+              <Text style={s.addListBtnText}>+ Add</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Deleted List */}
+      {panel === 'deletedList' && (
+        <View style={s.panel}>
+          <View style={s.panelMinimalHeader}>
+            <View style={s.dragHandle} />
+          </View>
+          <ScrollView contentContainerStyle={s.panelScrollContent}>
+            <Text style={s.panelTitle}>Deleted</Text>
+            {agendas.filter((a) => a.status === 'deleted').length === 0 ? (
+              <Text style={s.emptyStateText}>No deleted items.</Text>
+            ) : (
+              agendas.filter((a) => a.status === 'deleted').map((agenda) => (
+                <View key={agenda.id} style={s.listRow}>
+                  <View style={[s.listDot, { backgroundColor: QUADRANT_META[agenda.quadrant].color }]} />
+                  <Text style={s.listItemText} numberOfLines={1}>{agenda.text}</Text>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      // TODO: Implement restore from deleted
+                      showToast('Restore coming soon');
+                    }}
+                    style={s.listActionBtn}
+                  >
+                    <Text style={s.listActionBtnText}>↻</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      // TODO: Implement move to hold from deleted
+                      showToast('Move to hold coming soon');
+                    }}
+                    style={s.listActionBtn}
+                  >
+                    <Text style={s.listActionBtnText}>⏸</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      Alert.alert('Permanently Delete?', 'This cannot be undone.', [
+                        { text: 'Cancel', onPress: () => {} },
+                        { text: 'Delete Forever', onPress: async () => {
+                          // Implement permanent delete from vault
+                          showToast('Permanently deleted');
+                        }, style: 'destructive' },
+                      ]);
+                    }}
+                    style={s.listActionBtn}
+                  >
+                    <Text style={s.listActionBtnText}>🗑</Text>
+                  </TouchableOpacity>
+                </View>
+              ))
+            )}
+          </ScrollView>
+        </View>
+      )}
+
       {/* Settings Panel */}
       {panel === 'settings' && (
         <View style={s.panel}>
@@ -793,6 +984,30 @@ function createStyles(tokens: ThemeTokens, fonts: any, fontMultiplier: number) {
       color: tokens.textGhost,
       marginTop: 16,
       marginBottom: 8,
+    },
+    listGroupHeader: {
+      fontFamily: fonts.serif,
+      fontSize: fontScale(10, fontMultiplier),
+      color: tokens.textGhost,
+      marginTop: 12,
+      marginBottom: 6,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    addListBtn: {
+      marginTop: 16,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderWidth: 0.5,
+      borderColor: tokens.border,
+      borderRadius: 6,
+      backgroundColor: tokens.surface2,
+    },
+    addListBtnText: {
+      fontFamily: fonts.serif,
+      fontSize: fontScale(12, fontMultiplier),
+      color: tokens.accent,
+      textAlign: 'center',
     },
   });
 }
