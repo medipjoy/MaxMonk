@@ -2,7 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Text, StyleSheet } from 'react-native';
 import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
-import { moderateScale } from '../clearday/scale';
+import { moderateScale, fontScale } from '../clearday/scale';
+import { useClearDayStore } from '../clearday/store';
 
 interface Props {
   tokens: ThemeTokens;
@@ -14,6 +15,7 @@ interface Props {
 
 export function Toast({ tokens, fontChoice, message, visible, bottomOffset }: Props) {
   const fonts = getFontSet(fontChoice as any);
+  const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export function Toast({ tokens, fontChoice, message, visible, bottomOffset }: Pr
       }]}
       pointerEvents="none"
     >
-      <Text style={{ fontFamily: fonts.serifItalic, fontSize: moderateScale(11), color: tokens.text, textAlign: 'center' }}>
+      <Text style={{ fontFamily: fonts.serifItalic, fontSize: fontScale(11, fontSizeMultiplier), color: tokens.text, textAlign: 'center' }}>
         {message}
       </Text>
     </Animated.View>

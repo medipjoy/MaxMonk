@@ -5,7 +5,7 @@ import Svg, { Line, Circle } from 'react-native-svg';
 import { useClearDayStore } from '../clearday/store';
 import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
-import { moderateScale } from '../clearday/scale';
+import { moderateScale, fontScale } from '../clearday/scale';
 import { NavCtx } from '../clearday/ClarityApp';
 
 interface Props { tokens: ThemeTokens; fontChoice: string; }
@@ -15,6 +15,7 @@ export function ReflectionScreen({ tokens, fontChoice }: Props) {
   const fonts = getFontSet(fontChoice as any);
   const nav = useContext(NavCtx);
   const { reflection, weeklyPulse, monthlyPulse, runReflection, runPulse } = useClearDayStore();
+  const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
   const [loading, setLoading] = useState(false);
   const [pulseLoading, setPulseLoading] = useState<'week' | 'month' | null>(null);
 
@@ -32,19 +33,19 @@ export function ReflectionScreen({ tokens, fontChoice }: Props) {
     container: { flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top },
     header: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: tokens.border },
     backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-    title: { fontFamily: fonts.serif, fontSize: moderateScale(22), color: tokens.text, fontWeight: '300', letterSpacing: -0.3 },
-    subtitle: { fontFamily: fonts.serifItalic, fontSize: moderateScale(9), color: tokens.textGhost, paddingHorizontal: 16, marginTop: 8 },
+    title: { fontFamily: fonts.serif, fontSize: fontScale(22, fontSizeMultiplier), color: tokens.text, fontWeight: '300', letterSpacing: -0.3 },
+    subtitle: { fontFamily: fonts.serifItalic, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.textGhost, paddingHorizontal: 16, marginTop: 8 },
     scroll: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
     generateBtn: { height: 44, borderWidth: 0.5, borderColor: tokens.borderMid, borderRadius: 6, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-    generateText: { fontFamily: fonts.serif, fontSize: moderateScale(13), color: tokens.text },
-    reflectionText: { fontFamily: fonts.serifItalic, fontSize: moderateScale(14), color: tokens.text, lineHeight: moderateScale(14) * 1.8, paddingBottom: 24 },
+    generateText: { fontFamily: fonts.serif, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.text },
+    reflectionText: { fontFamily: fonts.serifItalic, fontSize: fontScale(14, fontSizeMultiplier), color: tokens.text, lineHeight: fontScale(14, fontSizeMultiplier) * 1.8, paddingBottom: 24 },
     pulseRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
     pulseBtn: { flex: 1, height: 36, borderWidth: 0.5, borderColor: tokens.borderMid, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
-    pulseBtnText: { fontFamily: fonts.serif, fontSize: moderateScale(11), color: tokens.text },
+    pulseBtnText: { fontFamily: fonts.serif, fontSize: fontScale(11, fontSizeMultiplier), color: tokens.text },
     insightRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 10 },
     insightDot: { width: 6, height: 6, borderRadius: 3, marginTop: 4 },
-    insightText: { flex: 1, fontFamily: fonts.serif, fontSize: moderateScale(12), color: tokens.textMuted, lineHeight: moderateScale(12) * 1.5 },
-    insightTitle: { fontFamily: fonts.serifBold, fontSize: moderateScale(13), color: tokens.text, marginBottom: 8 },
+    insightText: { flex: 1, fontFamily: fonts.serif, fontSize: fontScale(12, fontSizeMultiplier), color: tokens.textMuted, lineHeight: fontScale(12, fontSizeMultiplier) * 1.5 },
+    insightTitle: { fontFamily: fonts.serifBold, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.text, marginBottom: 8 },
   });
 
   const pulse = pulseLoading === 'week' ? null : weeklyPulse;

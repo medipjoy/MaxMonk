@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useClearDayStore } from '../clearday/store';
 import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
-import { moderateScale } from '../clearday/scale';
+import { moderateScale, fontScale } from '../clearday/scale';
 
 const QUADRANT_ORDER = ['Q1', 'Q2', 'Q3', 'Q4'] as const;
 
@@ -23,6 +23,7 @@ export function MITSelector({ tokens, fontChoice, currentMit, onSelect, onClose 
   const fonts = getFontSet(fontChoice as any);
   const insets = useSafeAreaInsets();
   const { agendas } = useClearDayStore();
+  const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
   const [inputText, setInputText] = useState('');
 
   const active = agendas.filter(a => a.status === 'active');
@@ -40,16 +41,16 @@ export function MITSelector({ tokens, fontChoice, currentMit, onSelect, onClose 
     overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: tokens.overlay, justifyContent: 'flex-end' },
     sheet: { backgroundColor: tokens.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: insets.bottom + 12 },
     handle: { width: 36, height: 3, backgroundColor: tokens.border, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 8 },
-    title: { fontFamily: fonts.serifItalic, fontSize: moderateScale(16), color: tokens.text, paddingHorizontal: 16, marginBottom: 10 },
+    title: { fontFamily: fonts.serifItalic, fontSize: fontScale(16, fontSizeMultiplier), color: tokens.text, paddingHorizontal: 16, marginBottom: 10 },
     inputRow: { flexDirection: 'row', marginHorizontal: 16, borderWidth: 0.5, borderColor: tokens.borderMid, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: tokens.surface2 },
-    input: { flex: 1, fontFamily: fonts.serifItalic, fontSize: moderateScale(13), color: tokens.text },
-    addBtn: { fontFamily: fonts.serifItalic, fontSize: moderateScale(11), color: tokens.accent, alignSelf: 'center', marginLeft: 8 },
+    input: { flex: 1, fontFamily: fonts.serifItalic, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.text },
+    addBtn: { fontFamily: fonts.serifItalic, fontSize: fontScale(11, fontSizeMultiplier), color: tokens.accent, alignSelf: 'center', marginLeft: 8 },
     list: { maxHeight: 260, marginTop: 8 },
     row: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: tokens.border },
     dot: { width: 4, height: 4, borderRadius: 2, marginRight: 12 },
-    rowText: { fontFamily: fonts.serif, fontSize: moderateScale(13), color: tokens.text, flex: 1 },
+    rowText: { fontFamily: fonts.serif, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.text, flex: 1 },
     clearBtn: { alignItems: 'center', paddingVertical: 14 },
-    clearText: { fontFamily: fonts.serifItalic, fontSize: moderateScale(11), color: tokens.textGhost },
+    clearText: { fontFamily: fonts.serifItalic, fontSize: fontScale(11, fontSizeMultiplier), color: tokens.textGhost },
   });
 
   return (

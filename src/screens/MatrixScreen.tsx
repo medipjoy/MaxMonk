@@ -9,7 +9,7 @@ import Svg, { Circle, Line, Text as SvgText, Rect } from 'react-native-svg';
 import { useClearDayStore } from '../clearday/store';
 import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
-import { moderateScale } from '../clearday/scale';
+import { moderateScale, fontScale } from '../clearday/scale';
 import { NavCtx } from '../clearday/ClarityApp';
 import { MITStrip } from '../components/MITStrip';
 import { Agenda, MatrixStyle } from '../clearday/types';
@@ -68,7 +68,9 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
     if (canvasSize.width === 0) return;
     const urgency = Math.round((locationX / canvasSize.width) * 90 + 5);
     const importance = Math.round((1 - locationY / canvasSize.height) * 90 + 5);
-    nav.setAddSheetPreset({ urgency, importance });
+    // If a single tag filter is active, pre-select that domain
+    const defaultDomain = selectedTags && selectedTags.size === 1 ? Array.from(selectedTags)[0] : undefined;
+    nav.setAddSheetPreset({ urgency, importance, defaultDomain });
     nav.openPanel('add');
   };
 
@@ -98,7 +100,7 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
     chip: { flexDirection: 'row', alignItems: 'center', borderRadius: 2, paddingHorizontal: 6, paddingVertical: 1, gap: 4 },
     chipDot: { width: 3, height: 3, borderRadius: 1.5 },
     chipText: { fontSize: 6.5 },
-    canvas: { flex: 1, position: 'relative', paddingHorizontal: 8, paddingVertical: 8 },
+    canvas: { flex: 1, position: 'relative', paddingHorizontal: 8, paddingTop: 8, paddingBottom: 20 },
     sparksBtn: { position: 'absolute', top: 8, right: 8, width: 28, height: 28, justifyContent: 'center', alignItems: 'center' },
     q1Warning: {
       position: 'absolute', right: 6, bottom: canvasSize.height / 2 + 4,
@@ -229,6 +231,7 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
               canvasWidth={innerW}
               canvasHeight={innerH}
               onTap={() => { nav.setBubbleActionId(agenda.id); nav.openPanel('bubbleAction'); }}
+              onEdit={() => { nav.setEditAgendaId(agenda.id); nav.openPanel('edit'); }}
               onDrop={(cx, cy) => updateAgendaPosition(agenda.id, cx, cy)}
             />
           ))}
@@ -260,13 +263,15 @@ interface BubbleProps {
   canvasWidth: number;
   canvasHeight: number;
   onTap: () => void;
+  onEdit: () => void;
   onDrop: (cx: number, cy: number) => void;
 }
 
-function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onDrop }: BubbleProps) {
+function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdit, onDrop }: BubbleProps) {
   const radius = getRadius(agenda.time);
   const color = qColor(agenda.quadrant, tokens);
   const wash = qWash(agenda.quadrant, tokens);
+  const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
 
   // Clamp cx/cy so bubbles near edges remain fully visible
   const clampedCx = Math.max(0.03, Math.min(0.97, agenda.cx));
@@ -279,6 +284,7 @@ function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onDro
   const dragging = useRef(false);
   const lastPos = useRef({ x: clampedCx * canvasWidth, y: clampedCy * canvasHeight });
   const didMove = useRef(false);
+  const lastTapTime = useRef(0);
 
   // Long-press detection
   const pressStartTime = useRef(0);
@@ -322,8 +328,14 @@ function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onDro
       dragging.current = false;
 
       if (!didMove.current) {
-        // Quick tap (< 500ms) — the long-press timer handles the action if held long enough
-        // If released quickly, do nothing (long-press required to open menu)
+        // Detect double-tap (two quick taps within 280ms)
+        const now = Date.now();
+        if (now - lastTapTime.current < 280) {
+          onEdit();
+          lastTapTime.current = 0;
+        } else {
+          lastTapTime.current = now;
+        }
         return;
       }
 
@@ -361,7 +373,7 @@ function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onDro
       <Text
         style={{
           fontFamily: fonts.serif,
-          fontSize: moderateScale(fontSize),
+          fontSize: fontScale(fontSize, fontSizeMultiplier),
           color: tokens.text,
           textAlign: 'center',
           paddingHorizontal: 4,

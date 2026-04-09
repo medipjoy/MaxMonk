@@ -1,10 +1,10 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback, PanResponder } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useClearDayStore } from '../clearday/store';
 import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
-import { moderateScale } from '../clearday/scale';
+import { moderateScale, fontScale } from '../clearday/scale';
 
 interface Props {
   tokens: ThemeTokens;
@@ -22,7 +22,16 @@ export function BubbleActionSheet({ tokens, fontChoice, agendaId, onClose, onAct
   const fonts = getFontSet(fontChoice as any);
   const insets = useSafeAreaInsets();
   const { agendas, completeAgenda, toggleHold, archiveAgenda, addAgenda } = useClearDayStore();
+  const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
   const agenda = agendas.find(a => a.id === agendaId);
+
+  const dismissPan = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 5,
+    onPanResponderMove: () => {},
+    onPanResponderRelease: (_, gs) => { if (gs.dy > 80) onClose(); },
+  })).current;
+
   if (!agenda) return null;
 
   const isOnHold = agenda.status === 'onhold';
@@ -32,12 +41,12 @@ export function BubbleActionSheet({ tokens, fontChoice, agendaId, onClose, onAct
     sheet: { backgroundColor: tokens.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: insets.bottom + 8 },
     handle: { width: 36, height: 3, backgroundColor: tokens.border, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 10 },
     header: { paddingHorizontal: 16, paddingBottom: 10, borderBottomWidth: 0.5, borderBottomColor: tokens.border },
-    title: { fontFamily: fonts.serifItalic, fontSize: moderateScale(13), color: tokens.text },
-    meta: { fontFamily: fonts.serif, fontSize: moderateScale(8), color: tokens.textGhost, marginTop: 3 },
+    title: { fontFamily: fonts.serifItalic, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.text },
+    meta: { fontFamily: fonts.serif, fontSize: fontScale(8, fontSizeMultiplier), color: tokens.textGhost, marginTop: 3 },
     row: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: tokens.border, gap: 12 },
-    icon: { width: 20, fontSize: moderateScale(14) },
-    rowText: { fontFamily: fonts.serif, fontSize: moderateScale(13), color: tokens.text },
-    deleteText: { fontFamily: fonts.serif, fontSize: moderateScale(13), color: tokens.q1 },
+    icon: { width: 20, fontSize: fontScale(14, fontSizeMultiplier) },
+    rowText: { fontFamily: fonts.serif, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.text },
+    deleteText: { fontFamily: fonts.serif, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.q1 },
   });
 
   const rows = [
@@ -52,7 +61,7 @@ export function BubbleActionSheet({ tokens, fontChoice, agendaId, onClose, onAct
       <View style={s.overlay}>
         <TouchableWithoutFeedback>
           <View style={s.sheet}>
-            <View style={s.handle} />
+            <View style={s.handle} {...dismissPan.panHandlers} />
             <View style={s.header}>
               <Text style={s.title} numberOfLines={2}>{agenda.text}</Text>
               <Text style={s.meta}>

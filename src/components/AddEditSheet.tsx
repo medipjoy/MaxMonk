@@ -1,15 +1,15 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useRef, useState, useContext } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, TouchableWithoutFeedback, KeyboardAvoidingView, Platform,
+  StyleSheet, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, PanResponder,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Polygon, Rect } from 'react-native-svg';
+import Svg, { Polygon, Rect, Line, Circle, Text as SvgText } from 'react-native-svg';
 import Slider from '@react-native-community/slider';
 import { useClearDayStore } from '../clearday/store';
 import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
-import { moderateScale } from '../clearday/scale';
+import { moderateScale, fontScale } from '../clearday/scale';
 import { posFromSliders, qFromPos } from '../clearday/helpers';
 import { NavCtx, AddSheetPreset } from '../clearday/ClarityApp';
 
@@ -35,6 +35,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
   const insets = useSafeAreaInsets();
   const nav = useContext(NavCtx);
   const { config, agendas, mit, addAgenda, updateAgenda } = useClearDayStore();
+  const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
 
   const existingAgenda = agendaId ? agendas.find(a => a.id === agendaId) : null;
 
@@ -48,11 +49,24 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
     existingAgenda?.cy != null ? Math.round((1 - existingAgenda.cy) * 90 + 5) : 50
   );
   const [effort, setEffort] = useState(3);
-  const [selectedTag, setSelectedTag] = useState(existingAgenda?.domain ?? config.tags[0]);
+  const [selectedTag, setSelectedTag] = useState(
+    existingAgenda?.domain ?? preset?.defaultDomain ?? config.tags[0]
+  );
   const [isMIT, setIsMIT] = useState(false);
 
+  const dismissPan = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 5,
+    onPanResponderMove: () => {},
+    onPanResponderRelease: (_, gs) => { if (gs.dy > 80) onClose(); },
+  })).current;
+
   useEffect(() => {
-    if (preset) { setUrgency(preset.urgency); setImportance(preset.importance); }
+    if (preset) {
+      setUrgency(preset.urgency);
+      setImportance(preset.importance);
+      if (preset.defaultDomain) setSelectedTag(preset.defaultDomain);
+    }
   }, [preset]);
 
   const { cx, cy } = posFromSliders(urgency, importance);
@@ -81,21 +95,20 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
     sheet: { backgroundColor: tokens.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: insets.bottom + 16, maxHeight: '90%' },
     handle: { width: 36, height: 3, backgroundColor: tokens.border, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 12 },
     scroll: { paddingHorizontal: 16 },
-    titleInput: { borderWidth: 0.5, borderColor: tokens.borderMid, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: tokens.surface2, fontFamily: fonts.serifItalic, fontSize: moderateScale(14), color: tokens.text, marginBottom: 8 },
+    titleInput: { borderWidth: 0.5, borderColor: tokens.borderMid, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: tokens.surface2, fontFamily: fonts.serifItalic, fontSize: fontScale(14, fontSizeMultiplier), color: tokens.text, marginBottom: 8 },
     mitRow: { flexDirection: 'row', alignItems: 'center', height: 36, marginBottom: 8, gap: 8 },
-    mitLabel: { fontFamily: fonts.serifItalic, fontSize: moderateScale(9), color: tokens.textGhost },
-    sliderLabel: { fontFamily: 'Inter_500Medium', fontSize: moderateScale(9), color: tokens.textMuted, textTransform: 'uppercase', letterSpacing: 0.9, marginBottom: 2 },
+    mitLabel: { fontFamily: fonts.serifItalic, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.textGhost },
+    sliderLabel: { fontFamily: 'Inter_500Medium', fontSize: fontScale(9, fontSizeMultiplier), color: tokens.textMuted, textTransform: 'uppercase', letterSpacing: 0.9, marginBottom: 2 },
     sliderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
-    sliderValue: { fontFamily: 'Inter_600SemiBold', fontSize: moderateScale(13), color: tokens.accent },
-    sliderHelp: { fontFamily: fonts.serifItalic, fontSize: moderateScale(9), color: tokens.textGhost, marginBottom: 10 },
+    sliderValue: { fontFamily: 'Inter_600SemiBold', fontSize: fontScale(13, fontSizeMultiplier), color: tokens.accent },
+    sliderHelp: { fontFamily: fonts.serifItalic, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.textGhost, marginBottom: 10 },
     tagRow: { flexDirection: 'row', gap: 6, marginBottom: 12, flexWrap: 'wrap' },
     tagChip: { borderRadius: 4, paddingHorizontal: 10, paddingVertical: 5 },
-    tagText: { fontFamily: fonts.serif, fontSize: moderateScale(11) },
+    tagText: { fontFamily: fonts.serif, fontSize: fontScale(11, fontSizeMultiplier) },
     preview: { flexDirection: 'row', gap: 6, marginBottom: 12 },
-    quadCell: { width: 22, height: 22, borderRadius: 2 },
-    previewLabel: { fontFamily: fonts.serifItalic, fontSize: moderateScale(9), color: tokens.accent, alignSelf: 'center' },
+    previewLabel: { fontFamily: fonts.serifItalic, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.accent, alignSelf: 'center' },
     submitBtn: { marginHorizontal: 16, height: 48, borderRadius: 6, justifyContent: 'center', alignItems: 'center', marginTop: 4 },
-    submitText: { fontFamily: fonts.serif, fontSize: moderateScale(14), color: tokens.surface },
+    submitText: { fontFamily: fonts.serif, fontSize: fontScale(14, fontSizeMultiplier), color: tokens.surface },
   });
 
   const StarIcon = ({ active }: { active: boolean }) => (
@@ -109,28 +122,40 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
     </Svg>
   );
 
-  const QuadPreview = () => (
-    <View>
-      <View style={{ flexDirection: 'row' }}>
-        {[['Q2', 'Q1'], ['Q4', 'Q3']].map((row, ri) => (
-          <View key={ri} style={{ flexDirection: 'row', gap: 2 }}>
-            {row.map(q => (
-              <View key={q} style={[s.quadCell, { backgroundColor: q === quadrant ? qColor(q, tokens) : tokens.surface2 + '80', marginBottom: 2 }]} />
-            ))}
-          </View>
-        ))}
-      </View>
-    </View>
-  );
+  // Mini SVG matrix — always tinted, shows dot at current urgency/importance position
+  const QuadPreview = () => {
+    const S = 80;
+    const half = S / 2;
+    const dotX = (urgency / 100) * S;
+    const dotY = (1 - importance / 100) * S;
+    return (
+      <Svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <Rect x={0} y={0} width={half} height={half} fill={tokens.q2Wash} />
+        <Rect x={half} y={0} width={half} height={half} fill={tokens.q1Wash} />
+        <Rect x={0} y={half} width={half} height={half} fill={tokens.q4Wash} />
+        <Rect x={half} y={half} width={half} height={half} fill={tokens.q3Wash} />
+        <Line x1={half} y1={0} x2={half} y2={S} stroke={tokens.axisLine} strokeWidth={0.75} />
+        <Line x1={0} y1={half} x2={S} y2={half} stroke={tokens.axisLine} strokeWidth={0.75} />
+        <SvgText x={3} y={half - 3} fontSize={5} fill={tokens.q2} opacity={0.5} fontStyle="italic">Sch</SvgText>
+        <SvgText x={S - 3} y={half - 3} fontSize={5} fill={tokens.q1} opacity={0.5} textAnchor="end" fontStyle="italic">Now</SvgText>
+        <SvgText x={3} y={S - 3} fontSize={5} fill={tokens.q4} opacity={0.5} fontStyle="italic">Elim</SvgText>
+        <SvgText x={S - 3} y={S - 3} fontSize={5} fill={tokens.q3} opacity={0.5} textAnchor="end" fontStyle="italic">Del</SvgText>
+        <Circle cx={dotX} cy={dotY} r={4} fill={quadColor} opacity={0.85} />
+      </Svg>
+    );
+  };
 
   return (
-    <TouchableWithoutFeedback onPress={onClose}>
-      <View style={s.overlay}>
-        <TouchableWithoutFeedback>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <View style={s.sheet}>
-              <View style={s.handle} />
-              <ScrollView style={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={s.overlay}
+    >
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={{ flex: 1 }} />
+      </TouchableWithoutFeedback>
+      <View style={s.sheet}>
+        <View style={s.handle} {...dismissPan.panHandlers} />
+        <ScrollView style={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                 {/* Title */}
                 <TextInput
                   style={s.titleInput}
@@ -170,7 +195,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
                 <Text style={s.sliderLabel}>Effort</Text>
                 <View style={s.sliderRow}>
                   <Slider style={{ flex: 1 }} minimumValue={1} maximumValue={7} step={1} value={effort} onValueChange={(v: number) => setEffort(Math.round(v))} minimumTrackTintColor={tokens.accent} maximumTrackTintColor={tokens.border} thumbTintColor={tokens.accent} />
-                  <Text style={[s.sliderValue, { fontSize: moderateScale(11) }]}>{EFFORT_LABELS[effort]}</Text>
+                  <Text style={[s.sliderValue, { fontSize: fontScale(11, fontSizeMultiplier) }]}>{EFFORT_LABELS[effort]}</Text>
                 </View>
 
                 {/* Category */}
@@ -202,10 +227,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
                   {existingAgenda ? 'Save Changes' : `Place in ${Q_LABEL[quadrant]}`}
                 </Text>
               </TouchableOpacity>
-            </View>
-          </KeyboardAvoidingView>
-        </TouchableWithoutFeedback>
       </View>
-    </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }

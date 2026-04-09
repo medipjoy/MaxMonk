@@ -5,7 +5,7 @@ import Svg, { Line } from 'react-native-svg';
 import { useClearDayStore } from '../clearday/store';
 import { ThemeTokens, ThemeMode, MatrixStyle } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
-import { moderateScale } from '../clearday/scale';
+import { moderateScale, fontScale } from '../clearday/scale';
 import { NavCtx } from '../clearday/ClarityApp';
 
 interface Props {
@@ -17,6 +17,7 @@ interface Props {
 }
 
 function OptionSelector<T extends string>({ options, value, onChange, tokens, fonts }: { options: T[]; value: T; onChange: (v: T) => void; tokens: ThemeTokens; fonts: any }) {
+  const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
   return (
     <View style={{ flexDirection: 'row', gap: 10 }}>
       {options.map(opt => {
@@ -25,7 +26,7 @@ function OptionSelector<T extends string>({ options, value, onChange, tokens, fo
           <TouchableOpacity key={opt} onPress={() => onChange(opt)}>
             <Text style={{
               fontFamily: fonts.serif,
-              fontSize: moderateScale(12),
+              fontSize: fontScale(12, fontSizeMultiplier),
               color: active ? tokens.text : tokens.textGhost,
               borderBottomWidth: active ? 1 : 0,
               borderBottomColor: tokens.text,
@@ -83,6 +84,7 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
   const archiveCount = vault.length;
 
   const currentFontSize = config.fontSizeMultiplier ?? 1.0;
+  const fontSizeMultiplier = currentFontSize;
 
   const TAGLINE = `Most people confuse being busy with being productive. The Eisenhower Matrix changes that. By sorting tasks into four clear quadrants, you stop reacting to noise and start investing your time where it genuinely creates impact and drives meaning.`;
 
@@ -90,19 +92,19 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
     container: { flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top },
     header: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: tokens.border },
     backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-    title: { fontFamily: fonts.serif, fontSize: moderateScale(22), color: tokens.text, fontWeight: '300', letterSpacing: -0.3 },
+    title: { fontFamily: fonts.serif, fontSize: fontScale(22, fontSizeMultiplier), color: tokens.text, fontWeight: '300', letterSpacing: -0.3 },
     scroll: { flex: 1 },
-    sectionLabel: { fontFamily: 'Inter_500Medium', fontSize: moderateScale(7), color: tokens.textGhost, textTransform: 'uppercase', letterSpacing: 0.12 * moderateScale(7), paddingHorizontal: 16, paddingTop: 20, paddingBottom: 6 },
+    sectionLabel: { fontFamily: 'Inter_500Medium', fontSize: fontScale(7, fontSizeMultiplier), color: tokens.textGhost, textTransform: 'uppercase', letterSpacing: 0.12 * fontScale(7, fontSizeMultiplier), paddingHorizontal: 16, paddingTop: 20, paddingBottom: 6 },
     row: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: tokens.border, justifyContent: 'space-between' },
-    rowLabel: { fontFamily: fonts.serif, fontSize: moderateScale(12), color: tokens.text },
-    rowValue: { fontFamily: fonts.serif, fontSize: moderateScale(12), color: tokens.textMuted },
-    helpText: { fontFamily: fonts.serifItalic, fontSize: moderateScale(8), color: tokens.textGhost, lineHeight: moderateScale(8) * 1.5, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 10 },
-    tagline: { fontFamily: fonts.serifItalic, fontSize: moderateScale(8), color: tokens.textGhost, lineHeight: moderateScale(8) * 1.6, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 40 },
+    rowLabel: { fontFamily: fonts.serif, fontSize: fontScale(12, fontSizeMultiplier), color: tokens.text },
+    rowValue: { fontFamily: fonts.serif, fontSize: fontScale(12, fontSizeMultiplier), color: tokens.textMuted },
+    helpText: { fontFamily: fonts.serifItalic, fontSize: fontScale(8, fontSizeMultiplier), color: tokens.textGhost, lineHeight: fontScale(8, fontSizeMultiplier) * 1.5, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 10 },
+    tagline: { fontFamily: fonts.serifItalic, fontSize: fontScale(8, fontSizeMultiplier), color: tokens.textGhost, lineHeight: fontScale(8, fontSizeMultiplier) * 1.6, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 40 },
     fontSizeRow: { paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: tokens.border },
-    fontSizeLabel: { fontFamily: fonts.serif, fontSize: moderateScale(12), color: tokens.text, marginBottom: 8 },
+    fontSizeLabel: { fontFamily: fonts.serif, fontSize: fontScale(12, fontSizeMultiplier), color: tokens.text, marginBottom: 8 },
     fontSizeBtns: { flexDirection: 'row', gap: 8 },
     fontSizeBtn: { borderRadius: 4, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 0.5 },
-    fontSizeBtnText: { fontFamily: fonts.serif, fontSize: moderateScale(11) },
+    fontSizeBtnText: { fontFamily: fonts.serif, fontSize: fontScale(11, fontSizeMultiplier) },
   });
 
   const fontOptions = ['cormorant', 'baskerville', 'inter', 'jakarta'] as const;
@@ -124,7 +126,7 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
         <Text style={s.sectionLabel}>Appearance</Text>
         <View style={s.row}>
           <Text style={s.rowLabel}>Theme</Text>
-          <OptionSelector options={['light', 'dark', 'system'] as ThemeMode[]} value={themeMode} onChange={v => setThemeMode(v)} tokens={tokens} fonts={fonts} />
+          <OptionSelector options={['light', 'dark'] as ThemeMode[]} value={themeMode} onChange={v => setThemeMode(v)} tokens={tokens} fonts={fonts} />
         </View>
         <View style={s.row}>
           <Text style={s.rowLabel}>Style</Text>
@@ -137,7 +139,7 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
               const active = fontChoice === f;
               return (
                 <TouchableOpacity key={f} onPress={() => setFontChoice(f)}>
-                  <Text style={{ fontFamily: fonts.serif, fontSize: moderateScale(12), color: active ? tokens.text : tokens.textGhost, borderBottomWidth: active ? 1 : 0, borderBottomColor: tokens.text, paddingBottom: active ? 1 : 0 }}>
+                  <Text style={{ fontFamily: fonts.serif, fontSize: fontScale(12, fontSizeMultiplier), color: active ? tokens.text : tokens.textGhost, borderBottomWidth: active ? 1 : 0, borderBottomColor: tokens.text, paddingBottom: active ? 1 : 0 }}>
                     {FONT_LABELS[f]}
                   </Text>
                 </TouchableOpacity>
