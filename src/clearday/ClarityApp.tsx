@@ -13,7 +13,7 @@ import { useClearDayStore } from './store';
 import { resolveTheme } from './theme';
 
 // Screens
-import { MatrixScreen } from '../screens/MatrixScreen';
+import { ClearDayScreen } from '../screens/ClearDayScreen';
 import { ActiveScreen } from '../screens/ActiveScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { HoldScreen } from '../screens/HoldScreen';
@@ -170,7 +170,7 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
       case 'settings': return <SettingsScreen tokens={tokens} fontChoice={config.fontChoice} themeMode={config.themeMode} matrixStyle={config.matrixStyle} mitResetHour={config.mitResetHour} />;
       case 'completed': return <CompletedScreen tokens={tokens} fontChoice={config.fontChoice} />;
       default: return (
-        <MatrixScreen tokens={tokens} fontChoice={config.fontChoice} matrixStyle={config.matrixStyle} onPillToggle={togglePill} />
+        <ClearDayScreen tokens={tokens} fontChoice={config.fontChoice} matrixStyle={config.matrixStyle} onPillToggle={togglePill} />
       );
     }
   };

@@ -1,7 +1,7 @@
 export type Quadrant = 'Q1' | 'Q2' | 'Q3' | 'Q4';
 export type AgendaDomain = string;
 export type AgendaTime = 'quick' | 'short' | 'medium' | 'deep';
-export type AgendaStatus = 'active' | 'onhold' | 'done';
+export type AgendaStatus = 'active' | 'onhold' | 'deleted' | 'done';
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type MatrixStyle = 'tinted' | 'editorial' | 'paper';
 export type FontChoice = 'cormorant' | 'baskerville' | 'inter' | 'jakarta';
@@ -57,12 +57,11 @@ export interface AppConfig {
 
 export interface SparkSuggestion {
   quadrant: Quadrant;
-  reason: string;
   domain: AgendaDomain;
-  refined: string;
   time: AgendaTime;
   urgency: number;
   importance: number;
+  refined: string;
 }
 
 export interface PulseInsight {

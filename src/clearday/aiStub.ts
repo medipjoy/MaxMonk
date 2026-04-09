@@ -25,7 +25,6 @@ export async function suggestFromSpark(text: string): Promise<SparkSuggestion> {
     urgency: Math.round(urgency),
     importance: Math.round(importance),
     refined: text.trim().replace(/\s+/g, ' '),
-    reason: `This appears ${importance > 60 ? 'important' : 'moderately important'} and ${urgency > 60 ? 'time-sensitive' : 'flexible'}, so ${quadrant} fits best.`,
   };
 }
 
