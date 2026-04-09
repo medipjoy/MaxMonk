@@ -96,11 +96,11 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: tokens.bg },
-    filterRow: { height: 22, paddingHorizontal: 10, flexDirection: 'row', gap: 4, alignItems: 'center' },
+    filterRow: { height: 22, paddingHorizontal: 10, flexDirection: 'row', gap: 4, alignItems: 'center', justifyContent: 'center' },
     chip: { flexDirection: 'row', alignItems: 'center', borderRadius: 2, paddingHorizontal: 6, paddingVertical: 1, gap: 4 },
     chipDot: { width: 3, height: 3, borderRadius: 1.5 },
     chipText: { fontSize: 6.5 },
-    canvas: { flex: 1, position: 'relative', paddingHorizontal: 8, paddingTop: 8, paddingBottom: 20 },
+    canvas: { flex: 1, position: 'relative', paddingHorizontal: 8, paddingTop: 8, paddingBottom: 35 },
     sparksBtn: { position: 'absolute', top: 8, right: 8, width: 28, height: 28, justifyContent: 'center', alignItems: 'center' },
     q1Warning: {
       position: 'absolute', right: 6, bottom: canvasSize.height / 2 + 4,
@@ -122,10 +122,10 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
         <Svg width={svgW} height={svgH} style={{ position: 'absolute', top: 8, left: 8 }} pointerEvents="none">
           <Line x1={svgW / 2} y1={0} x2={svgW / 2} y2={svgH} stroke={tokens.axisLine} strokeWidth={1} />
           <Line x1={0} y1={svgH / 2} x2={svgW} y2={svgH / 2} stroke={tokens.axisLine} strokeWidth={1} />
-          <SvgText x={10} y={svgH / 2 - 4} fontSize={8} fill={tokens.q2} opacity={0.1} fontStyle="italic">Schedule</SvgText>
-          <SvgText x={svgW - 60} y={svgH / 2 - 4} fontSize={8} fill={tokens.q1} opacity={0.1} fontStyle="italic">Do Now</SvgText>
-          <SvgText x={10} y={svgH - 6} fontSize={8} fill={tokens.q4} opacity={0.1} fontStyle="italic">Eliminate</SvgText>
-          <SvgText x={svgW - 68} y={svgH - 6} fontSize={8} fill={tokens.q3} opacity={0.1} fontStyle="italic">Delegate</SvgText>
+          <SvgText x={svgW / 2 - 4} y={svgH / 2 - 6} fontSize={8} fill={tokens.q2} opacity={0.15} fontStyle="italic" textAnchor="end">Schedule</SvgText>
+          <SvgText x={svgW / 2 + 4} y={svgH / 2 - 6} fontSize={8} fill={tokens.q1} opacity={0.15} fontStyle="italic">Do Now</SvgText>
+          <SvgText x={svgW / 2 - 4} y={svgH / 2 + 12} fontSize={8} fill={tokens.q4} opacity={0.15} fontStyle="italic" textAnchor="end">Eliminate</SvgText>
+          <SvgText x={svgW / 2 + 4} y={svgH / 2 + 12} fontSize={8} fill={tokens.q3} opacity={0.15} fontStyle="italic">Delegate</SvgText>
         </Svg>
       );
     }
@@ -165,11 +165,11 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
         <Rect x={svgW / 2} y={svgH / 2} width={svgW / 2} height={svgH / 2} fill={tokens.q3Wash} />
         <Line x1={0} y1={svgH / 2} x2={svgW} y2={svgH / 2} stroke={tokens.axisLine} strokeWidth={1} />
         <Line x1={svgW / 2} y1={0} x2={svgW / 2} y2={svgH} stroke={tokens.axisLine} strokeWidth={1} />
-        {/* Watermarks */}
-        <SvgText x={8} y={svgH / 2 - 6} fontSize={7.5} fill={tokens.q2} opacity={0.38} fontStyle="italic">Schedule</SvgText>
-        <SvgText x={svgW - 6} y={svgH / 2 - 6} fontSize={7.5} fill={tokens.q1} opacity={0.38} textAnchor="end" fontStyle="italic">Do Now</SvgText>
-        <SvgText x={8} y={svgH - 6} fontSize={7.5} fill={tokens.q4} opacity={0.38} fontStyle="italic">Eliminate</SvgText>
-        <SvgText x={svgW - 6} y={svgH - 6} fontSize={7.5} fill={tokens.q3} opacity={0.38} textAnchor="end" fontStyle="italic">Delegate</SvgText>
+        {/* Watermarks — near axis center */}
+        <SvgText x={svgW / 2 - 4} y={svgH / 2 - 6} fontSize={7.5} fill={tokens.q2} opacity={0.38} fontStyle="italic" textAnchor="end">Schedule</SvgText>
+        <SvgText x={svgW / 2 + 4} y={svgH / 2 - 6} fontSize={7.5} fill={tokens.q1} opacity={0.38} fontStyle="italic">Do Now</SvgText>
+        <SvgText x={svgW / 2 - 4} y={svgH / 2 + 12} fontSize={7.5} fill={tokens.q4} opacity={0.38} fontStyle="italic" textAnchor="end">Eliminate</SvgText>
+        <SvgText x={svgW / 2 + 4} y={svgH / 2 + 12} fontSize={7.5} fill={tokens.q3} opacity={0.38} fontStyle="italic">Delegate</SvgText>
       </Svg>
     );
   };
@@ -383,7 +383,7 @@ function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdi
         {agenda.text}
       </Text>
       {isOnHold && (
-        <Text style={{ position: 'absolute', top: 2, right: 3, fontSize: 8, color: tokens.textGhost }}>⏸</Text>
+        <Text style={{ position: 'absolute', top: 2, right: 3, fontSize: fontScale(8, fontSizeMultiplier), color: tokens.textGhost }}>–</Text>
       )}
     </Animated.View>
   );

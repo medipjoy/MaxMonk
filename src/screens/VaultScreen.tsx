@@ -57,10 +57,10 @@ export function VaultScreen({ tokens, fontChoice }: Props) {
               <View style={[s.dot, { backgroundColor: qColor(entry.quadrant, tokens) }]} />
               <Text style={s.rowText} numberOfLines={1}>{entry.text}</Text>
               <View style={s.rowBtns}>
-                <TouchableOpacity style={s.rowBtn} onPress={() => restoreVaultAgenda(entry.id)}>
-                  <Text style={s.rowBtnText}>↩</Text>
+                <TouchableOpacity style={s.rowBtn} onPress={async () => { await restoreVaultAgenda(entry.id); nav.showToast('To Hold'); }}>
+                  <Text style={s.rowBtnText}>↑</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.rowBtn} onPress={() => deleteVaultAgenda(entry.id)}>
+                <TouchableOpacity style={s.rowBtn} onPress={async () => { await deleteVaultAgenda(entry.id); nav.showToast('Deleted'); }}>
                   <Text style={[s.rowBtnText, { color: tokens.q1 }]}>✕</Text>
                 </TouchableOpacity>
               </View>

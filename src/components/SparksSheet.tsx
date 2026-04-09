@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useClearDayStore } from '../clearday/store';
 import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
-import { moderateScale, fontScale } from '../clearday/scale';
+import { fontScale } from '../clearday/scale';
 import { NavCtx } from '../clearday/ClarityApp';
 
 interface Props {
@@ -20,19 +20,17 @@ export function SparksSheet({ tokens, fontChoice, onClose }: Props) {
   const fonts = getFontSet(fontChoice as any);
   const insets = useSafeAreaInsets();
   const nav = useContext(NavCtx);
-  const { sparks, addSpark, removeSpark, suggestSpark, acceptSpark } = useClearDayStore();
+  const { sparks, addSpark, removeSpark } = useClearDayStore();
   const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
 
   const dismissPan = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 5,
     onPanResponderMove: () => {},
-    onPanResponderRelease: (_, gs) => { if (gs.dy > 80) onClose(); },
+    onPanResponderRelease: (_, gs) => { if (gs.dy > 50) onClose(); },
   })).current;
+
   const [input, setInput] = useState('');
-  const [suggesting, setSuggesting] = useState<string | null>(null);
-  const [suggestion, setSuggestion] = useState<any>(null);
-  const [thinking, setThinking] = useState(false);
 
   const handleAdd = async () => {
     if (!input.trim()) return;
@@ -40,32 +38,17 @@ export function SparksSheet({ tokens, fontChoice, onClose }: Props) {
     setInput('');
   };
 
-  const handlePromote = async (sparkId: string) => {
-    const spark = sparks.find(s => s.id === sparkId);
-    if (!spark) return;
-    setSuggesting(sparkId);
-    setThinking(true);
-    setSuggestion(null);
-    try {
-      const result = await suggestSpark(spark);
-      setSuggestion(result);
-    } finally {
-      setThinking(false);
-    }
-  };
-
-  const handleAccept = async () => {
-    if (!suggesting || !suggestion) return;
-    await acceptSpark(suggesting, suggestion);
-    setSuggesting(null);
-    setSuggestion(null);
+  const handleSendToMatrix = (spark: { id: string; text: string }) => {
+    nav.setAddSheetPreset({ urgency: 50, importance: 50, defaultText: spark.text, sparkId: spark.id });
+    nav.openPanel('add');
     onClose();
   };
 
   const s = StyleSheet.create({
     overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: tokens.overlay, justifyContent: 'flex-end' },
-    sheet: { backgroundColor: tokens.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: insets.bottom + 12, maxHeight: '80%' },
-    handle: { width: 36, height: 3, backgroundColor: tokens.border, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 10 },
+    sheet: { backgroundColor: tokens.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: insets.bottom + 12, maxHeight: '85%' },
+    handleArea: { width: '100%', alignItems: 'center', paddingTop: 8, paddingBottom: 8 },
+    handle: { width: 36, height: 3, backgroundColor: tokens.border, borderRadius: 2 },
     header: { paddingHorizontal: 16, marginBottom: 10 },
     title: { fontFamily: fonts.serif, fontSize: fontScale(18, fontSizeMultiplier), fontWeight: '300', color: tokens.text },
     subtitle: { fontFamily: fonts.serifItalic, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.textGhost, marginTop: 2 },
@@ -79,18 +62,7 @@ export function SparksSheet({ tokens, fontChoice, onClose }: Props) {
     rowBtns: { flexDirection: 'row', gap: 8 },
     rowBtn: { width: 32, height: 32, justifyContent: 'center', alignItems: 'center' },
     rowBtnText: { fontSize: fontScale(14, fontSizeMultiplier) },
-    suggCard: { margin: 16, backgroundColor: tokens.surface2, borderWidth: 0.5, borderColor: tokens.borderMid, borderRadius: 8, padding: 12 },
-    suggText: { fontFamily: fonts.serifItalic, fontSize: fontScale(10, fontSizeMultiplier), color: tokens.textGhost },
-    suggTitle: { fontFamily: fonts.serif, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.text, marginTop: 4 },
-    suggMeta: { fontFamily: fonts.serif, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.textMuted, marginTop: 4 },
-    suggBtns: { flexDirection: 'row', gap: 8, marginTop: 10 },
-    suggBtnFill: { flex: 1, backgroundColor: tokens.text, borderRadius: 5, paddingVertical: 8, alignItems: 'center' },
-    suggBtnOutline: { flex: 1, borderWidth: 0.5, borderColor: tokens.borderMid, borderRadius: 5, paddingVertical: 8, alignItems: 'center' },
-    suggBtnFillText: { fontFamily: fonts.serif, fontSize: fontScale(11, fontSizeMultiplier), color: tokens.surface },
-    suggBtnOutlineText: { fontFamily: fonts.serif, fontSize: fontScale(11, fontSizeMultiplier), color: tokens.text },
   });
-
-  const Q_LABEL: Record<string, string> = { Q1: 'Do Now', Q2: 'Schedule', Q3: 'Delegate', Q4: 'Eliminate' };
 
   return (
     <KeyboardAvoidingView
@@ -101,7 +73,9 @@ export function SparksSheet({ tokens, fontChoice, onClose }: Props) {
         <View style={{ flex: 1 }} />
       </TouchableWithoutFeedback>
       <View style={s.sheet}>
-        <View style={s.handle} {...dismissPan.panHandlers} />
+        <View style={s.handleArea} {...dismissPan.panHandlers}>
+          <View style={s.handle} />
+        </View>
         <View style={s.header}>
           <Text style={s.title}>Sparks</Text>
           <Text style={s.subtitle}>Raw thoughts, unfiltered.</Text>
@@ -111,28 +85,14 @@ export function SparksSheet({ tokens, fontChoice, onClose }: Props) {
           <TouchableOpacity onPress={handleAdd}><Text style={s.addBtn}>Add</Text></TouchableOpacity>
         </View>
 
-        {suggestion && suggesting && (
-          <View style={s.suggCard}>
-            <Text style={s.suggText}>AI Suggestion</Text>
-            <Text style={s.suggTitle}>{suggestion.refined}</Text>
-            <Text style={s.suggMeta}>{Q_LABEL[suggestion.quadrant]} · {suggestion.reason}</Text>
-            <View style={s.suggBtns}>
-              <TouchableOpacity style={s.suggBtnFill} onPress={handleAccept}><Text style={s.suggBtnFillText}>Place on Matrix</Text></TouchableOpacity>
-              <TouchableOpacity style={s.suggBtnOutline} onPress={() => { setSuggesting(null); setSuggestion(null); }}><Text style={s.suggBtnOutlineText}>Dismiss</Text></TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {thinking && <Text style={[s.suggText, { marginHorizontal: 16, marginBottom: 8 }]}>Thinking…</Text>}
-
         <ScrollView style={s.list} keyboardShouldPersistTaps="handled">
           {sparks.map(spark => (
             <View key={spark.id} style={s.row}>
               <View style={s.dot} />
               <Text style={s.sparkText} numberOfLines={2}>{spark.text}</Text>
               <View style={s.rowBtns}>
-                <TouchableOpacity style={s.rowBtn} onPress={() => handlePromote(spark.id)}>
-                  <Text style={[s.rowBtnText, { color: tokens.accent }]}>↗</Text>
+                <TouchableOpacity style={s.rowBtn} onPress={() => handleSendToMatrix(spark)}>
+                  <Text style={[s.rowBtnText, { color: tokens.accent }]}>→</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.rowBtn} onPress={() => removeSpark(spark.id)}>
                   <Text style={[s.rowBtnText, { color: tokens.textGhost }]}>✕</Text>

@@ -455,7 +455,7 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     if (!entry) return;
     const vault = get().vault.filter((v) => v.id !== id);
     const { archivedAt, ...agenda } = entry;
-    const agendas = [{ ...agenda, status: 'active' as const, onHoldAt: undefined }, ...get().agendas];
+    const agendas = [{ ...agenda, status: 'onhold' as const, onHoldAt: undefined }, ...get().agendas];
     set({ agendas, vault });
     await persistSnapshot({ agendas, vault, sparks: get().sparks });
   },

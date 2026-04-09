@@ -20,7 +20,7 @@ export function MITCarryForwardModal({ tokens, fontChoice, onCarry, onDismiss }:
   const s = StyleSheet.create({
     overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: tokens.overlay, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
     card: { backgroundColor: tokens.surface, borderRadius: 12, padding: 16, width: '100%' },
-    label: { fontFamily: 'Inter_500Medium', fontSize: fontScale(7.5, fontSizeMultiplier), color: tokens.textGhost, letterSpacing: 0.1 * fontScale(7.5, fontSizeMultiplier), textTransform: 'uppercase', marginBottom: 8 },
+    label: { fontFamily: fonts.sansMedium, fontSize: fontScale(7.5, fontSizeMultiplier), color: tokens.textGhost, letterSpacing: 0.1 * fontScale(7.5, fontSizeMultiplier), textTransform: 'uppercase', marginBottom: 8 },
     heading: { fontFamily: fonts.serif, fontSize: fontScale(11, fontSizeMultiplier), color: tokens.text, marginBottom: 6 },
     mitText: { fontFamily: fonts.serifItalic, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.gold, marginBottom: 6 },
     body: { fontFamily: fonts.serif, fontSize: fontScale(8.5, fontSizeMultiplier), color: tokens.textMuted, marginBottom: 16 },

@@ -19,6 +19,7 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { HoldScreen } from '../screens/HoldScreen';
 import { VaultScreen } from '../screens/VaultScreen';
 import { ReflectionScreen } from '../screens/ReflectionScreen';
+import { CompletedScreen } from '../screens/CompletedScreen';
 
 // Panels / sheets
 import { AddEditSheet } from '../components/AddEditSheet';
@@ -30,10 +31,10 @@ import { MITCarryForwardModal } from '../components/MITCarryForwardModal';
 import { Toast } from '../components/Toast';
 
 // Navigation types
-export type Screen = 'matrix' | 'active' | 'hold' | 'vault' | 'reflect' | 'settings';
+export type Screen = 'matrix' | 'active' | 'hold' | 'vault' | 'reflect' | 'settings' | 'completed';
 export type Panel = 'add' | 'edit' | 'sparks' | 'more' | 'mitSelector' | 'bubbleAction' | null;
 
-export interface AddSheetPreset { urgency: number; importance: number; defaultDomain?: string }
+export interface AddSheetPreset { urgency: number; importance: number; defaultDomain?: string; defaultText?: string; sparkId?: string; }
 export interface BubbleActionTarget { agendaId: string }
 
 interface ClarityAppProps {
@@ -167,6 +168,7 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
       case 'vault': return <VaultScreen tokens={tokens} fontChoice={config.fontChoice} />;
       case 'reflect': return <ReflectionScreen tokens={tokens} fontChoice={config.fontChoice} />;
       case 'settings': return <SettingsScreen tokens={tokens} fontChoice={config.fontChoice} themeMode={config.themeMode} matrixStyle={config.matrixStyle} mitResetHour={config.mitResetHour} />;
+      case 'completed': return <CompletedScreen tokens={tokens} fontChoice={config.fontChoice} />;
       default: return (
         <MatrixScreen tokens={tokens} fontChoice={config.fontChoice} matrixStyle={config.matrixStyle} onPillToggle={togglePill} />
       );
@@ -180,7 +182,7 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
     main: { flex: 1 },
     pill: {
       position: 'absolute',
-      bottom: 18 + insets.bottom,
+      bottom: 12 + insets.bottom,
       alignSelf: 'center',
       flexDirection: 'row',
       alignItems: 'center',

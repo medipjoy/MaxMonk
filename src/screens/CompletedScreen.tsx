@@ -17,16 +17,22 @@ function qColor(q: string, tokens: ThemeTokens) {
   switch (q) { case 'Q1': return tokens.q1; case 'Q2': return tokens.q2; case 'Q3': return tokens.q3; default: return tokens.q4; }
 }
 
-export function ActiveScreen({ tokens, fontChoice }: Props) {
+function formatMonth(ts?: number): string {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }).replace(' ', " '");
+}
+
+export function CompletedScreen({ tokens, fontChoice }: Props) {
   const insets = useSafeAreaInsets();
   const fonts = getFontSet(fontChoice as any);
   const nav = useContext(NavCtx);
-  const { agendas, toggleHold, archiveAgenda, completeAgenda } = useClearDayStore();
+  const { agendas } = useClearDayStore();
   const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
 
-  const active = agendas.filter(a => a.status === 'active');
-  const grouped: Record<string, typeof active> = {};
-  Q_ORDER.forEach(q => { grouped[q] = active.filter(a => a.quadrant === q); });
+  const completed = agendas.filter(a => a.status === 'done');
+  const grouped: Record<string, typeof completed> = {};
+  Q_ORDER.forEach(q => { grouped[q] = completed.filter(a => a.quadrant === q); });
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top },
@@ -38,10 +44,8 @@ export function ActiveScreen({ tokens, fontChoice }: Props) {
     sectionLabel: { fontFamily: fonts.sansMedium, fontSize: fontScale(7.5, fontSizeMultiplier), color: tokens.textGhost, textTransform: 'uppercase', letterSpacing: 0.1 * fontScale(7.5, fontSizeMultiplier) },
     row: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: tokens.border },
     dot: { width: 4, height: 4, borderRadius: 2, marginRight: 12 },
-    rowText: { flex: 1, fontFamily: fonts.serif, fontSize: fontScale(12, fontSizeMultiplier), color: tokens.text },
-    rowBtns: { flexDirection: 'row' },
-    rowBtn: { width: 32, height: 32, justifyContent: 'center', alignItems: 'center' },
-    rowBtnText: { fontSize: fontScale(14, fontSizeMultiplier), color: tokens.textMuted },
+    rowText: { flex: 1, fontFamily: fonts.serif, fontSize: fontScale(12, fontSizeMultiplier), color: tokens.textMuted },
+    rowMeta: { fontFamily: fonts.serif, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.textGhost, marginLeft: 8 },
     empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyText: { fontFamily: fonts.serifItalic, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.textGhost },
   });
@@ -55,11 +59,11 @@ export function ActiveScreen({ tokens, fontChoice }: Props) {
             <Line x1={5} y1={8} x2={10} y2={13} stroke={tokens.accent} strokeWidth={1.5} strokeLinecap="round" />
           </Svg>
         </TouchableOpacity>
-        <Text style={s.title}>Active</Text>
+        <Text style={s.title}>Completed</Text>
       </View>
 
-      {active.length === 0 ? (
-        <View style={s.empty}><Text style={s.emptyText}>Nothing active. Add something.</Text></View>
+      {completed.length === 0 ? (
+        <View style={s.empty}><Text style={s.emptyText}>Nothing completed yet.</Text></View>
       ) : (
         <ScrollView style={s.scroll}>
           {Q_ORDER.map(q => {
@@ -68,24 +72,14 @@ export function ActiveScreen({ tokens, fontChoice }: Props) {
             return (
               <View key={q}>
                 <View style={s.sectionHeader}>
-                  <Text style={s.sectionLabel}>{Q_LABEL[q]}</Text>
+                  <Text style={[s.sectionLabel, { color: qColor(q, tokens) }]}>{Q_LABEL[q]}</Text>
                 </View>
                 {items.map(agenda => (
-                  <TouchableOpacity key={agenda.id} style={s.row} onPress={() => { nav.setBubbleActionId(agenda.id); nav.openPanel('bubbleAction'); }}>
+                  <View key={agenda.id} style={s.row}>
                     <View style={[s.dot, { backgroundColor: qColor(q, tokens) }]} />
                     <Text style={s.rowText} numberOfLines={1}>{agenda.text}</Text>
-                    <View style={s.rowBtns}>
-                      <TouchableOpacity style={s.rowBtn} onPress={async () => { await completeAgenda(agenda.id); nav.showToast('Done'); }}>
-                        <Text style={s.rowBtnText}>◦</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={s.rowBtn} onPress={async () => { await toggleHold(agenda.id); nav.showToast('On Hold'); }}>
-                        <Text style={s.rowBtnText}>–</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={s.rowBtn} onPress={async () => { await archiveAgenda(agenda.id); nav.showToast('Archived'); }}>
-                        <Text style={s.rowBtnText}>↓</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </TouchableOpacity>
+                    <Text style={s.rowMeta}>{agenda.domain} · {formatMonth(agenda.doneAt)}</Text>
+                  </View>
                 ))}
               </View>
             );
