@@ -270,6 +270,140 @@ export function ClearDayScreen({ tokens, fontChoice, matrixStyle, onPillToggle }
         </KeyboardAvoidingView>
       )}
 
+      {/* Detail/Edit Panel */}
+      {panel === 'detail' && selectedAgenda && (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={s.panel}
+        >
+          <View style={s.panelMinimalHeader}>
+            <View style={s.dragHandle} />
+          </View>
+          <ScrollView contentContainerStyle={[s.panelScrollContent, { paddingBottom: 100 }]}>
+            <Text style={s.panelTitle}>Edit Agenda</Text>
+            <TextInput
+              value={newText}
+              onChangeText={setNewText}
+              placeholder="What needs to happen?"
+              placeholderTextColor={tokens.textMuted}
+              style={s.input}
+            />
+
+            {/* Domain selector */}
+            <Text style={s.label}>Domain</Text>
+            <View style={s.selectorRow}>
+              {['Professional', 'Personal'].map(d => (
+                <TouchableOpacity
+                  key={d}
+                  onPress={() => setNewDomain(d)}
+                  style={[s.selectorBtn, newDomain === d && s.selectorBtnActive]}
+                >
+                  <Text style={newDomain === d ? s.selectorBtnTextActive : s.selectorBtnText}>{d}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Time selector */}
+            <Text style={s.label}>Time</Text>
+            <View style={s.selectorRow}>
+              {['quick', 'short', 'medium', 'deep'].map(t => (
+                <TouchableOpacity
+                  key={t}
+                  onPress={() => setNewTime(t as any)}
+                  style={[s.selectorBtn, newTime === t && s.selectorBtnActive]}
+                >
+                  <Text style={newTime === t ? s.selectorBtnTextActive : s.selectorBtnText}>{t}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Urgency slider */}
+            <Text style={s.label}>Urgency: {newUrgency}</Text>
+            <Slider
+              style={s.slider}
+              minimumValue={5}
+              maximumValue={95}
+              value={newUrgency}
+              onValueChange={setNewUrgency}
+            />
+
+            {/* Importance slider */}
+            <Text style={s.label}>Importance: {newImportance}</Text>
+            <Slider
+              style={s.slider}
+              minimumValue={5}
+              maximumValue={95}
+              value={newImportance}
+              onValueChange={setNewImportance}
+            />
+
+            {/* Quadrant preview */}
+            <View style={[s.quadrantPreview, { backgroundColor: QUADRANT_META[selectedAgenda.quadrant].color }]}>
+              <Text style={s.quadrantPreviewText}>{getQuadrantName(selectedAgenda.quadrant)}</Text>
+            </View>
+
+            {/* Action buttons */}
+            {selectedAgenda && (
+              <View style={s.actionButtonsRow}>
+                <TouchableOpacity
+                  onPress={async () => {
+                    await completeAgenda(selectedAgenda.id);
+                    setPanel(null);
+                    showToast('Marked done');
+                  }}
+                  style={s.actionIconBtn}
+                >
+                  <Text style={s.actionBtnIcon}>✓</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => showToast('Already editing')}
+                  style={s.actionIconBtn}
+                >
+                  <Text style={s.actionBtnIcon}>✏</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={async () => {
+                    await toggleHold(selectedAgenda.id);
+                    setPanel(null);
+                    showToast(selectedAgenda.status === 'onhold' ? 'Resumed' : 'On Hold');
+                  }}
+                  style={s.actionIconBtn}
+                >
+                  <Text style={s.actionBtnIcon}>⏸</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={async () => {
+                    // TODO: Implement archive to vault
+                    showToast('Archive coming soon');
+                  }}
+                  style={s.actionIconBtn}
+                >
+                  <Text style={s.actionBtnIcon}>📦</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={s.submitBtn}
+              onPress={async () => {
+                if (!newText.trim()) return;
+                // TODO: Implement update for detail view
+                setPanel(null);
+                showToast('Changes saved');
+              }}
+            >
+              <Text style={s.submitBtnText}>Save</Text>
+            </TouchableOpacity>
+
+            <View style={s.panelBottomActions}>
+              <TouchableOpacity onPress={() => setPanel(null)}>
+                <Text style={s.panelBackBtnBottomText}>Back</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      )}
+
       {/* Sparks Panel */}
       {panel === 'sparks' && (
         <View style={s.panel}>
@@ -1008,6 +1142,20 @@ function createStyles(tokens: ThemeTokens, fonts: any, fontMultiplier: number) {
       fontSize: fontScale(12, fontMultiplier),
       color: tokens.accent,
       textAlign: 'center',
+    },
+    quadrantPreview: {
+      marginTop: 16,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 6,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    quadrantPreviewText: {
+      fontFamily: fonts.serif,
+      fontSize: fontScale(12, fontMultiplier),
+      color: tokens.bg,
+      fontWeight: '500',
     },
   });
 }
