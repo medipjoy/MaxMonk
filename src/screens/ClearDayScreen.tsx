@@ -61,6 +61,13 @@ export function ClearDayScreen({ tokens, fontChoice, matrixStyle, onPillToggle }
   const [sparkSuggestion, setSparkSuggestion] = useState<SparkSuggestion | null>(null);
   const [sparkLoading, setSparkLoading] = useState(false);
 
+  // Zoom & Pan
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const tapCount = useRef(0);
+  const tapTimer = useRef<NodeJS.Timeout | null>(null);
+
   // Toast
   const [toastMsg, setToastMsg] = useState('');
   const toastTimer = useRef<NodeJS.Timeout | null>(null);
@@ -78,6 +85,31 @@ export function ClearDayScreen({ tokens, fontChoice, matrixStyle, onPillToggle }
   // Get quadrant name from config or default
   const getQuadrantName = (quad: Quadrant) => config.quadrantLabels?.[quad] || DEFAULT_QUADRANT_LABELS[quad] || quad;
 
+  // Zoom/Pan handlers
+  const handleCanvasTap = () => {
+    const now = Date.now();
+    tapCount.current += 1;
+
+    if (tapTimer.current) clearTimeout(tapTimer.current);
+    tapTimer.current = setTimeout(() => {
+      tapCount.current = 0;
+    }, 300);
+
+    // Triple-tap to reset zoom
+    if (tapCount.current >= 3) {
+      setZoomLevel(1);
+      setPanX(0);
+      setPanY(0);
+      tapCount.current = 0;
+      showToast('Zoom reset');
+    }
+  };
+
+  const handleZoom = (delta: number) => {
+    const newZoom = Math.min(2, Math.max(1, zoomLevel + delta));
+    setZoomLevel(newZoom);
+  };
+
   // Render
   const s = createStyles(tokens, fonts, config.fontSizeMultiplier || 1.0);
 
@@ -90,11 +122,16 @@ export function ClearDayScreen({ tokens, fontChoice, matrixStyle, onPillToggle }
         </TouchableOpacity>
       </View>
 
-      {/* Main Canvas - Matrix Grid */}
-      <View style={s.canvas}>
+      {/* Main Canvas - Matrix Grid with Zoom/Pan */}
+      <View
+        style={s.canvas}
+        onTouchEnd={handleCanvasTap}
+      >
         <ScrollView style={{ flex: 1 }} scrollEnabled={true}>
-          {/* Q1, Q2, Q3, Q4 grid rendering */}
-          <Text style={s.placeholder}>Matrix View (MVP-1 in progress)</Text>
+          {/* Q1, Q2, Q3, Q4 grid rendering with zoom transform */}
+          <View style={{ transform: [{ scale: zoomLevel }] }}>
+            <Text style={s.placeholder}>Matrix View (Zoom: {zoomLevel.toFixed(1)}x, Triple-tap to reset)</Text>
+          </View>
         </ScrollView>
       </View>
 
@@ -708,8 +745,51 @@ export function ClearDayScreen({ tokens, fontChoice, matrixStyle, onPillToggle }
           </View>
           <ScrollView contentContainerStyle={s.panelScrollContent}>
             <Text style={s.panelTitle}>Settings</Text>
+
+            {/* Appearance Section */}
+            <Text style={s.settingCategory}>APPEARANCE</Text>
             <Text style={s.settingLabel}>Theme</Text>
-            <Text style={s.settingValue}>{config.themeMode}</Text>
+            <View style={s.selectorRow}>
+              {['light', 'dark', 'system'].map(mode => (
+                <TouchableOpacity
+                  key={mode}
+                  onPress={() => {
+                    // TODO: Implement theme change
+                    showToast(`Theme set to ${mode}`);
+                  }}
+                  style={[s.selectorBtn, config.themeMode === mode && s.selectorBtnActive]}
+                >
+                  <Text style={config.themeMode === mode ? s.selectorBtnTextActive : s.selectorBtnText}>
+                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Today's Focus Section */}
+            <Text style={s.settingCategory}>TODAY'S FOCUS</Text>
+            <Text style={s.settingLabel}>MIT Reset Hour</Text>
+            <Text style={s.settingValue}>{config.mitResetHour}:00</Text>
+            <Text style={s.settingHint}>Your MIT resets each day at this hour (0-23)</Text>
+
+            {/* Categories Section */}
+            <Text style={s.settingCategory}>CATEGORIES</Text>
+            <View style={s.tagList}>
+              {config.tags.map((tag, idx) => (
+                <View key={idx} style={s.tagChip}>
+                  <Text style={s.tagChipText}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+            <TouchableOpacity style={s.addTagBtn}>
+              <Text style={s.addTagBtnText}>+ Add Category</Text>
+            </TouchableOpacity>
+
+            {/* About Section */}
+            <Text style={s.settingCategory}>ABOUT</Text>
+            <Text style={s.settingValue}>Clarity MVP-1</Text>
+            <Text style={s.settingHint}>An Eisenhower Matrix app by Clarity Labs</Text>
+
             <View style={s.panelBottomActions}>
               <TouchableOpacity onPress={() => setPanel(null)}>
                 <Text style={s.panelBackBtnBottomText}>Back</Text>
@@ -1156,6 +1236,54 @@ function createStyles(tokens: ThemeTokens, fonts: any, fontMultiplier: number) {
       fontSize: fontScale(12, fontMultiplier),
       color: tokens.bg,
       fontWeight: '500',
+    },
+    settingCategory: {
+      fontFamily: fonts.sansMedium,
+      fontSize: fontScale(7, fontMultiplier),
+      color: tokens.textGhost,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginTop: 20,
+      marginBottom: 10,
+    },
+    settingHint: {
+      fontFamily: fonts.serif,
+      fontSize: fontScale(9, fontMultiplier),
+      color: tokens.textMuted,
+      marginTop: 4,
+    },
+    tagList: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 12,
+    },
+    tagChip: {
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      backgroundColor: tokens.surface2,
+      borderWidth: 0.5,
+      borderColor: tokens.border,
+      borderRadius: 14,
+    },
+    tagChipText: {
+      fontFamily: fonts.serif,
+      fontSize: fontScale(10, fontMultiplier),
+      color: tokens.text,
+    },
+    addTagBtn: {
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderWidth: 0.5,
+      borderColor: tokens.border,
+      borderRadius: 4,
+      marginBottom: 12,
+    },
+    addTagBtnText: {
+      fontFamily: fonts.serif,
+      fontSize: fontScale(11, fontMultiplier),
+      color: tokens.accent,
+      textAlign: 'center',
     },
   });
 }
