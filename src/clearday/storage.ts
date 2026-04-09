@@ -69,6 +69,7 @@ export async function loadConfig(): Promise<AppConfig> {
     fontChoice: 'cormorant',
     matrixStyle: 'tinted',
     mitResetHour: 0,
+    fontSizeMultiplier: 1.0,
   });
 }
 

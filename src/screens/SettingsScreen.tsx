@@ -43,6 +43,13 @@ const FONT_LABELS: Record<string, string> = { cormorant: 'Cg', baskerville: 'Lb'
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_LABEL = (h: number) => h === 0 ? '12:00 am' : h < 12 ? `${h}:00 am` : h === 12 ? '12:00 pm' : `${h - 12}:00 pm`;
 
+const FONT_SIZE_OPTIONS: { label: string; value: number }[] = [
+  { label: 'Small', value: 0.85 },
+  { label: 'Normal', value: 1.0 },
+  { label: 'Large', value: 1.15 },
+  { label: 'XL', value: 1.3 },
+];
+
 export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mitResetHour }: Props) {
   const insets = useSafeAreaInsets();
   const fonts = getFontSet(fontChoice as any);
@@ -67,8 +74,15 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
     useClearDayStore.setState({ config: newCfg });
   };
 
+  const setFontSizeMultiplier = (multiplier: number) => {
+    const newCfg = { ...config, fontSizeMultiplier: multiplier };
+    useClearDayStore.setState({ config: newCfg });
+  };
+
   const holdCount = agendas.filter(a => a.status === 'onhold').length;
   const archiveCount = vault.length;
+
+  const currentFontSize = config.fontSizeMultiplier ?? 1.0;
 
   const TAGLINE = `Most people confuse being busy with being productive. The Eisenhower Matrix changes that. By sorting tasks into four clear quadrants, you stop reacting to noise and start investing your time where it genuinely creates impact and drives meaning.`;
 
@@ -84,6 +98,11 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
     rowValue: { fontFamily: fonts.serif, fontSize: moderateScale(12), color: tokens.textMuted },
     helpText: { fontFamily: fonts.serifItalic, fontSize: moderateScale(8), color: tokens.textGhost, lineHeight: moderateScale(8) * 1.5, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 10 },
     tagline: { fontFamily: fonts.serifItalic, fontSize: moderateScale(8), color: tokens.textGhost, lineHeight: moderateScale(8) * 1.6, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 40 },
+    fontSizeRow: { paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: tokens.border },
+    fontSizeLabel: { fontFamily: fonts.serif, fontSize: moderateScale(12), color: tokens.text, marginBottom: 8 },
+    fontSizeBtns: { flexDirection: 'row', gap: 8 },
+    fontSizeBtn: { borderRadius: 4, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 0.5 },
+    fontSizeBtnText: { fontFamily: fonts.serif, fontSize: moderateScale(11) },
   });
 
   const fontOptions = ['cormorant', 'baskerville', 'inter', 'jakarta'] as const;
@@ -120,6 +139,30 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
                 <TouchableOpacity key={f} onPress={() => setFontChoice(f)}>
                   <Text style={{ fontFamily: fonts.serif, fontSize: moderateScale(12), color: active ? tokens.text : tokens.textGhost, borderBottomWidth: active ? 1 : 0, borderBottomColor: tokens.text, paddingBottom: active ? 1 : 0 }}>
                     {FONT_LABELS[f]}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Font Size */}
+        <View style={s.fontSizeRow}>
+          <Text style={s.fontSizeLabel}>Font Size</Text>
+          <View style={s.fontSizeBtns}>
+            {FONT_SIZE_OPTIONS.map(({ label, value }) => {
+              const active = Math.abs((currentFontSize) - value) < 0.01;
+              return (
+                <TouchableOpacity
+                  key={label}
+                  style={[s.fontSizeBtn, {
+                    backgroundColor: active ? tokens.accent : 'transparent',
+                    borderColor: active ? tokens.accent : tokens.textGhost,
+                  }]}
+                  onPress={() => setFontSizeMultiplier(value)}
+                >
+                  <Text style={[s.fontSizeBtnText, { color: active ? tokens.surface : tokens.textGhost }]}>
+                    {label}
                   </Text>
                 </TouchableOpacity>
               );

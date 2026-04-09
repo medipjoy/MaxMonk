@@ -167,6 +167,7 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     fontChoice: 'cormorant',
     matrixStyle: 'tinted',
     mitResetHour: 0,
+    fontSizeMultiplier: 1.0,
   },
   reflection: '',
   weeklyPulse: null,
@@ -185,7 +186,7 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     const config: AppConfig = {
       name: rawConfig.name || 'Me',
       migratedV1: !!rawConfig.migratedV1,
-      themeMode: rawConfig.themeMode || 'system',
+      themeMode: rawConfig.themeMode || 'light',
       vaultExpiryDefault: rawConfig.vaultExpiryDefault || 'on_60d',
       holdExpiryDefault: rawConfig.holdExpiryDefault || 'off',
       tags,
@@ -193,6 +194,7 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
       fontChoice: rawConfig.fontChoice || 'cormorant',
       matrixStyle: rawConfig.matrixStyle || 'tinted',
       mitResetHour: rawConfig.mitResetHour ?? 0,
+      fontSizeMultiplier: rawConfig.fontSizeMultiplier ?? 1.0,
     };
     const normalizedAgendas = loadedAgendas.map((a) => ({ ...a, domain: resolveTag(a.domain, tags) }));
     const normalizedVault = loadedVault.map((v) => ({ ...v, domain: resolveTag(v.domain, tags) }));

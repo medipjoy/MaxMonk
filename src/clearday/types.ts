@@ -49,9 +49,10 @@ export interface AppConfig {
   holdExpiryDefault: ExpiryDefault;
   tags: string[];
   quadrantLabels: Record<Quadrant, string>;
-  fontChoice: FontChoice;        // default: 'cormorant'
-  matrixStyle: MatrixStyle;      // default: 'tinted'
-  mitResetHour: number;          // default: 0  (midnight, 0–23)
+  fontChoice: FontChoice;            // default: 'cormorant'
+  matrixStyle: MatrixStyle;          // default: 'tinted'
+  mitResetHour: number;              // default: 0  (midnight, 0–23)
+  fontSizeMultiplier: number;        // default: 1.0, range: 0.85–1.3
 }
 
 export interface SparkSuggestion {

@@ -7,6 +7,7 @@ export interface FontSet {
   sans: string;
   sansMedium: string;
   label: string;        // always Inter or Jakarta for system labels regardless of choice
+  lineHeightMultiplier: number;  // visual size normalization (Cormorant appears smaller at same size)
 }
 
 export function getFontSet(choice: FontChoice): FontSet {
@@ -19,6 +20,7 @@ export function getFontSet(choice: FontChoice): FontSet {
         sans: 'Cormorant_Garamond_400Regular',
         sansMedium: 'Cormorant_Garamond_600SemiBold',
         label: 'Inter_500Medium',
+        lineHeightMultiplier: 1.13,
       };
     case 'baskerville':
       return {
@@ -28,6 +30,7 @@ export function getFontSet(choice: FontChoice): FontSet {
         sans: 'LibreBaskerville_400Regular',
         sansMedium: 'LibreBaskerville_700Bold',
         label: 'Inter_500Medium',
+        lineHeightMultiplier: 1.0,
       };
     case 'inter':
       return {
@@ -37,6 +40,7 @@ export function getFontSet(choice: FontChoice): FontSet {
         sans: 'Inter_400Regular',
         sansMedium: 'Inter_500Medium',
         label: 'Inter_500Medium',
+        lineHeightMultiplier: 1.0,
       };
     case 'jakarta':
       return {
@@ -46,8 +50,23 @@ export function getFontSet(choice: FontChoice): FontSet {
         sans: 'PlusJakartaSans_400Regular',
         sansMedium: 'PlusJakartaSans_500Medium',
         label: 'PlusJakartaSans_500Medium',
+        lineHeightMultiplier: 1.0,
       };
   }
+}
+
+/**
+ * Returns font size normalized for visual consistency across font choices.
+ * Cormorant appears ~13% smaller at the same fontSize, so we scale it up.
+ * Optionally pass fontSizeMultiplier from user settings (default 1.0).
+ */
+export function getNormalizedFontSize(
+  baseFontSize: number,
+  fontChoice: FontChoice,
+  fontSizeMultiplier: number = 1.0,
+): number {
+  const fontSet = getFontSet(fontChoice);
+  return baseFontSize * fontSet.lineHeightMultiplier * fontSizeMultiplier;
 }
 
 // Font display names for Settings UI

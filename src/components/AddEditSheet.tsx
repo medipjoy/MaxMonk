@@ -39,8 +39,14 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
   const existingAgenda = agendaId ? agendas.find(a => a.id === agendaId) : null;
 
   const [title, setTitle] = useState(existingAgenda?.text ?? '');
-  const [urgency, setUrgency] = useState(preset?.urgency ?? existingAgenda?.cx != null ? Math.round((existingAgenda?.cx ?? 0.5) * 90 + 5) : 50);
-  const [importance, setImportance] = useState(preset?.importance ?? existingAgenda?.cy != null ? Math.round((1 - (existingAgenda?.cy ?? 0.5)) * 90 + 5) : 50);
+  const [urgency, setUrgency] = useState(
+    preset?.urgency != null ? preset.urgency :
+    existingAgenda?.cx != null ? Math.round(existingAgenda.cx * 90 + 5) : 50
+  );
+  const [importance, setImportance] = useState(
+    preset?.importance != null ? preset.importance :
+    existingAgenda?.cy != null ? Math.round((1 - existingAgenda.cy) * 90 + 5) : 50
+  );
   const [effort, setEffort] = useState(3);
   const [selectedTag, setSelectedTag] = useState(existingAgenda?.domain ?? config.tags[0]);
   const [isMIT, setIsMIT] = useState(false);

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
@@ -14,9 +15,21 @@ interface Props {
 
 export function MITStrip({ tokens, fontChoice, mitText, onPress }: Props) {
   const fonts = getFontSet(fontChoice as any);
+  const insets = useSafeAreaInsets();
+
+  const notchPadding = insets.top > 0 ? insets.top : 0;
+  const stripHeight = 24 + notchPadding;
+
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
-      <View style={[s.container, { borderBottomColor: tokens.border }]}>
+      <View style={[
+        s.container,
+        {
+          borderBottomColor: tokens.border,
+          height: stripHeight,
+          paddingTop: notchPadding,
+        },
+      ]}>
         {/* Target icon */}
         <View style={s.icon}>
           <Svg width={14} height={14} viewBox="0 0 14 14">
@@ -46,7 +59,6 @@ export function MITStrip({ tokens, fontChoice, mitText, onPress }: Props) {
 
 const s = StyleSheet.create({
   container: {
-    height: 24,
     borderBottomWidth: 0.5,
     flexDirection: 'row',
     alignItems: 'center',

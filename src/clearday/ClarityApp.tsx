@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
+  Text,
   StyleSheet,
-  Animated,
   TouchableWithoutFeedback,
   Platform,
   Dimensions,
@@ -75,7 +75,7 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
   const toastTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Pill visibility (mobile: touch-triggered, web: mouse-triggered)
-  const pillOpacity = useRef(new Animated.Value(0)).current;
+  const [pillVisible, setPillVisible] = useState(false);
   const pillTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => { bootstrap(); }, []);
@@ -125,18 +125,27 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
   };
   const back = () => { setScreen('matrix'); setPanel(null); };
 
-  const tokens = resolveTheme(config.themeMode, systemScheme);
+  const tokens = resolveTheme(config.themeMode, null);
   const { width } = Dimensions.get('window');
   const isWide = width >= 768;
 
   // Pill show/hide
   const showPill = () => {
     if (panel) return;
-    Animated.timing(pillOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    setPillVisible(true);
     if (pillTimer.current) clearTimeout(pillTimer.current);
     pillTimer.current = setTimeout(() => {
-      Animated.timing(pillOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+      setPillVisible(false);
     }, 2500);
+  };
+
+  const togglePill = () => {
+    if (pillVisible) {
+      if (pillTimer.current) clearTimeout(pillTimer.current);
+      setPillVisible(false);
+    } else {
+      showPill();
+    }
   };
 
   const isPillScreenActive = screen === 'matrix' && !panel;
@@ -159,11 +168,7 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
       case 'reflect': return <ReflectionScreen tokens={tokens} fontChoice={config.fontChoice} />;
       case 'settings': return <SettingsScreen tokens={tokens} fontChoice={config.fontChoice} themeMode={config.themeMode} matrixStyle={config.matrixStyle} mitResetHour={config.mitResetHour} />;
       default: return (
-        <TouchableWithoutFeedback onPress={showPill}>
-          <View style={{ flex: 1 }}>
-            <MatrixScreen tokens={tokens} fontChoice={config.fontChoice} matrixStyle={config.matrixStyle} />
-          </View>
-        </TouchableWithoutFeedback>
+        <MatrixScreen tokens={tokens} fontChoice={config.fontChoice} matrixStyle={config.matrixStyle} onPillToggle={togglePill} />
       );
     }
   };
@@ -171,7 +176,7 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
   const s = StyleSheet.create({
     root: { flex: 1, backgroundColor: tokens.bg },
     wide: { flex: 1, flexDirection: 'row' },
-    sidebar: { width: 220, backgroundColor: tokens.surface, borderRightWidth: 1, borderRightColor: tokens.border },
+    sidebar: { width: 90, backgroundColor: tokens.surface, borderRightWidth: 1, borderRightColor: tokens.border },
     main: { flex: 1 },
     pill: {
       position: 'absolute',
@@ -200,10 +205,15 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
         ) : (
           <>
             {renderScreen()}
-            {isPillScreenActive && (
-              <Animated.View style={[s.pill, { opacity: pillOpacity }]} pointerEvents="box-none">
+            {isPillScreenActive && pillVisible && (
+              <View
+                style={s.pill}
+                // @ts-ignore web only
+                onMouseEnter={Platform.OS === 'web' ? showPill : undefined}
+                onMouseLeave={Platform.OS === 'web' ? () => { if (pillTimer.current) clearTimeout(pillTimer.current); setPillVisible(false); } : undefined}
+              >
                 <PillIcons screen={screen} tokens={tokens} goTo={goTo} openPanel={openPanel} />
-              </Animated.View>
+              </View>
             )}
           </>
         )}
@@ -273,46 +283,77 @@ function PillButton({ onPress, active, indicatorColor, children }: { onPress: ()
   );
 }
 
-// --- Sidebar (wide screens) ---
-function Sidebar({ tokens, fontChoice, screen, goTo, openPanel }: { tokens: any; fontChoice: string; screen: Screen; goTo: (s: Screen) => void; openPanel: (p: Panel) => void }) {
-  const isMatrix = screen === 'matrix';
-  const isActive = screen === 'active';
-
-  const s = StyleSheet.create({
-    nav: { paddingTop: 32, flex: 1 },
-    item: { height: 48, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, gap: 12 },
-    activeBar: { position: 'absolute', left: 0, top: 12, bottom: 12, width: 2, backgroundColor: tokens.accent, borderRadius: 1 },
-    label: { fontFamily: 'Inter_500Medium', fontSize: 12, color: tokens.textMuted },
-    activeLabel: { color: tokens.accent },
-    divider: { height: 0.5, backgroundColor: tokens.border, marginVertical: 8, marginHorizontal: 20 },
-    subItem: { height: 36, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, gap: 10 },
-    subLabel: { fontFamily: 'Cormorant_Garamond_400Regular', fontSize: 14, color: tokens.text },
-  });
+// --- Sidebar (wide screens, 90px icon-only) ---
+function SidebarItem({
+  icon, label, active, onPress, tokens,
+}: { icon: React.ReactNode; label: string; active: boolean; onPress: () => void; tokens: any }) {
+  const [hovered, setHovered] = useState(false);
 
   return (
-    <View style={{ width: 220, backgroundColor: tokens.surface, borderRightWidth: 1, borderRightColor: tokens.border }}>
-      <View style={s.nav}>
-        <TouchableWithoutFeedback onPress={() => goTo('matrix')}>
-          <View style={s.item}>
-            {isMatrix && <View style={s.activeBar} />}
-            <CrosshairIcon color={isMatrix ? tokens.accent : tokens.textGhost} size={16} />
-            <View style={[s.label as any, isMatrix && (s.activeLabel as any)]} />
+    <TouchableWithoutFeedback onPress={onPress}>
+      <View
+        style={{ height: 52, justifyContent: 'center', alignItems: 'center', position: 'relative' }}
+        // @ts-ignore web only
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        {active && (
+          <View style={{ position: 'absolute', left: 0, top: 10, bottom: 10, width: 2, backgroundColor: tokens.accent, borderRadius: 1 }} />
+        )}
+        <View style={{ width: 32, height: 32, justifyContent: 'center', alignItems: 'center' }}>
+          {icon}
+        </View>
+        {hovered && (
+          <View style={{
+            position: 'absolute', left: 90, top: '50%', transform: [{ translateY: -12 }],
+            backgroundColor: tokens.surface, borderWidth: 0.5, borderColor: tokens.border,
+            borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4, zIndex: 999,
+          }}>
+            <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: tokens.text, whiteSpace: 'nowrap' } as any}>
+              {label}
+            </Text>
           </View>
-        </TouchableWithoutFeedback>
-        <TouchableWithoutFeedback onPress={() => goTo('active')}>
-          <View style={s.item}>
-            {isActive && <View style={s.activeBar} />}
-            <ListIcon color={isActive ? tokens.accent : tokens.textGhost} size={16} />
-          </View>
-        </TouchableWithoutFeedback>
-        <View style={s.divider} />
-        {(['reflect', 'hold', 'vault', 'settings'] as Screen[]).map(s2 => (
-          <TouchableWithoutFeedback key={s2} onPress={() => goTo(s2)}>
-            <View style={s.subItem}>
-              <View style={[s.subLabel as any, screen === s2 && { color: tokens.accent }]}>
-              </View>
-            </View>
-          </TouchableWithoutFeedback>
+        )}
+      </View>
+    </TouchableWithoutFeedback>
+  );
+}
+
+function Sidebar({ tokens, fontChoice, screen, goTo, openPanel }: { tokens: any; fontChoice: string; screen: Screen; goTo: (s: Screen) => void; openPanel: (p: Panel) => void }) {
+  const SUB_SCREENS: { key: Screen; label: string }[] = [
+    { key: 'reflect', label: 'Reflect' },
+    { key: 'hold', label: 'On Hold' },
+    { key: 'vault', label: 'Archive' },
+    { key: 'settings', label: 'Settings' },
+  ];
+
+  return (
+    <View style={{ width: 90, backgroundColor: tokens.surface, borderRightWidth: 1, borderRightColor: tokens.border }}>
+      <View style={{ paddingTop: 32, flex: 1 }}>
+        <SidebarItem
+          icon={<CrosshairIcon color={screen === 'matrix' ? tokens.accent : tokens.textGhost} size={20} />}
+          label="Matrix"
+          active={screen === 'matrix'}
+          onPress={() => goTo('matrix')}
+          tokens={tokens}
+        />
+        <SidebarItem
+          icon={<ListIcon color={screen === 'active' ? tokens.accent : tokens.textGhost} size={20} />}
+          label="Active"
+          active={screen === 'active'}
+          onPress={() => goTo('active')}
+          tokens={tokens}
+        />
+        <View style={{ height: 0.5, backgroundColor: tokens.border, marginVertical: 8, marginHorizontal: 16 }} />
+        {SUB_SCREENS.map(({ key, label }) => (
+          <SidebarItem
+            key={key}
+            icon={<DotsIcon color={screen === key ? tokens.accent : tokens.textGhost} size={16} />}
+            label={label}
+            active={screen === key}
+            onPress={() => goTo(key)}
+            tokens={tokens}
+          />
         ))}
       </View>
     </View>
