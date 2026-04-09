@@ -1,13 +1,13 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, TouchableWithoutFeedback, KeyboardAvoidingView, Platform,
+  StyleSheet, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, PanResponder,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useClearDayStore } from '../clearday/store';
 import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
-import { moderateScale } from '../clearday/scale';
+import { moderateScale, fontScale } from '../clearday/scale';
 import { NavCtx } from '../clearday/ClarityApp';
 
 interface Props {
@@ -21,6 +21,14 @@ export function SparksSheet({ tokens, fontChoice, onClose }: Props) {
   const insets = useSafeAreaInsets();
   const nav = useContext(NavCtx);
   const { sparks, addSpark, removeSpark, suggestSpark, acceptSpark } = useClearDayStore();
+  const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
+
+  const dismissPan = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 5,
+    onPanResponderMove: () => {},
+    onPanResponderRelease: (_, gs) => { if (gs.dy > 80) onClose(); },
+  })).current;
   const [input, setInput] = useState('');
   const [suggesting, setSuggesting] = useState<string | null>(null);
   const [suggestion, setSuggestion] = useState<any>(null);
@@ -59,81 +67,81 @@ export function SparksSheet({ tokens, fontChoice, onClose }: Props) {
     sheet: { backgroundColor: tokens.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: insets.bottom + 12, maxHeight: '80%' },
     handle: { width: 36, height: 3, backgroundColor: tokens.border, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 10 },
     header: { paddingHorizontal: 16, marginBottom: 10 },
-    title: { fontFamily: fonts.serif, fontSize: moderateScale(18), fontWeight: '300', color: tokens.text },
-    subtitle: { fontFamily: fonts.serifItalic, fontSize: moderateScale(9), color: tokens.textGhost, marginTop: 2 },
+    title: { fontFamily: fonts.serif, fontSize: fontScale(18, fontSizeMultiplier), fontWeight: '300', color: tokens.text },
+    subtitle: { fontFamily: fonts.serifItalic, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.textGhost, marginTop: 2 },
     inputRow: { flexDirection: 'row', marginHorizontal: 16, gap: 8, marginBottom: 12, alignItems: 'center' },
-    input: { flex: 1, borderWidth: 0.5, borderColor: tokens.borderMid, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: tokens.surface2, fontFamily: fonts.serifItalic, fontSize: moderateScale(13), color: tokens.text },
-    addBtn: { fontFamily: fonts.serif, fontSize: moderateScale(11), color: tokens.accent },
+    input: { flex: 1, borderWidth: 0.5, borderColor: tokens.borderMid, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: tokens.surface2, fontFamily: fonts.serifItalic, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.text },
+    addBtn: { fontFamily: fonts.serif, fontSize: fontScale(11, fontSizeMultiplier), color: tokens.accent },
     list: { flex: 1 },
     row: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: tokens.border },
     dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: tokens.textGhost, marginRight: 10 },
-    sparkText: { flex: 1, fontFamily: fonts.serif, fontSize: moderateScale(12), color: tokens.text },
+    sparkText: { flex: 1, fontFamily: fonts.serif, fontSize: fontScale(12, fontSizeMultiplier), color: tokens.text },
     rowBtns: { flexDirection: 'row', gap: 8 },
     rowBtn: { width: 32, height: 32, justifyContent: 'center', alignItems: 'center' },
-    rowBtnText: { fontSize: moderateScale(14) },
+    rowBtnText: { fontSize: fontScale(14, fontSizeMultiplier) },
     suggCard: { margin: 16, backgroundColor: tokens.surface2, borderWidth: 0.5, borderColor: tokens.borderMid, borderRadius: 8, padding: 12 },
-    suggText: { fontFamily: fonts.serifItalic, fontSize: moderateScale(10), color: tokens.textGhost },
-    suggTitle: { fontFamily: fonts.serif, fontSize: moderateScale(13), color: tokens.text, marginTop: 4 },
-    suggMeta: { fontFamily: fonts.serif, fontSize: moderateScale(9), color: tokens.textMuted, marginTop: 4 },
+    suggText: { fontFamily: fonts.serifItalic, fontSize: fontScale(10, fontSizeMultiplier), color: tokens.textGhost },
+    suggTitle: { fontFamily: fonts.serif, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.text, marginTop: 4 },
+    suggMeta: { fontFamily: fonts.serif, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.textMuted, marginTop: 4 },
     suggBtns: { flexDirection: 'row', gap: 8, marginTop: 10 },
     suggBtnFill: { flex: 1, backgroundColor: tokens.text, borderRadius: 5, paddingVertical: 8, alignItems: 'center' },
     suggBtnOutline: { flex: 1, borderWidth: 0.5, borderColor: tokens.borderMid, borderRadius: 5, paddingVertical: 8, alignItems: 'center' },
-    suggBtnFillText: { fontFamily: fonts.serif, fontSize: moderateScale(11), color: tokens.surface },
-    suggBtnOutlineText: { fontFamily: fonts.serif, fontSize: moderateScale(11), color: tokens.text },
+    suggBtnFillText: { fontFamily: fonts.serif, fontSize: fontScale(11, fontSizeMultiplier), color: tokens.surface },
+    suggBtnOutlineText: { fontFamily: fonts.serif, fontSize: fontScale(11, fontSizeMultiplier), color: tokens.text },
   });
 
   const Q_LABEL: Record<string, string> = { Q1: 'Do Now', Q2: 'Schedule', Q3: 'Delegate', Q4: 'Eliminate' };
 
   return (
-    <TouchableWithoutFeedback onPress={onClose}>
-      <View style={s.overlay}>
-        <TouchableWithoutFeedback>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ maxHeight: '80%' }}>
-            <View style={s.sheet}>
-              <View style={s.handle} />
-              <View style={s.header}>
-                <Text style={s.title}>Sparks</Text>
-                <Text style={s.subtitle}>Raw thoughts, unfiltered.</Text>
-              </View>
-              <View style={s.inputRow}>
-                <TextInput style={s.input} value={input} onChangeText={setInput} placeholder="Capture a spark…" placeholderTextColor={tokens.textGhost} returnKeyType="done" onSubmitEditing={handleAdd} />
-                <TouchableOpacity onPress={handleAdd}><Text style={s.addBtn}>Add</Text></TouchableOpacity>
-              </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={s.overlay}
+    >
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={{ flex: 1 }} />
+      </TouchableWithoutFeedback>
+      <View style={s.sheet}>
+        <View style={s.handle} {...dismissPan.panHandlers} />
+        <View style={s.header}>
+          <Text style={s.title}>Sparks</Text>
+          <Text style={s.subtitle}>Raw thoughts, unfiltered.</Text>
+        </View>
+        <View style={s.inputRow}>
+          <TextInput style={s.input} value={input} onChangeText={setInput} placeholder="Capture a spark…" placeholderTextColor={tokens.textGhost} returnKeyType="done" onSubmitEditing={handleAdd} />
+          <TouchableOpacity onPress={handleAdd}><Text style={s.addBtn}>Add</Text></TouchableOpacity>
+        </View>
 
-              {suggestion && suggesting && (
-                <View style={s.suggCard}>
-                  <Text style={s.suggText}>AI Suggestion</Text>
-                  <Text style={s.suggTitle}>{suggestion.refined}</Text>
-                  <Text style={s.suggMeta}>{Q_LABEL[suggestion.quadrant]} · {suggestion.reason}</Text>
-                  <View style={s.suggBtns}>
-                    <TouchableOpacity style={s.suggBtnFill} onPress={handleAccept}><Text style={s.suggBtnFillText}>Place on Matrix</Text></TouchableOpacity>
-                    <TouchableOpacity style={s.suggBtnOutline} onPress={() => { setSuggesting(null); setSuggestion(null); }}><Text style={s.suggBtnOutlineText}>Dismiss</Text></TouchableOpacity>
-                  </View>
-                </View>
-              )}
-
-              {thinking && <Text style={[s.suggText, { marginHorizontal: 16, marginBottom: 8 }]}>Thinking…</Text>}
-
-              <ScrollView style={s.list} keyboardShouldPersistTaps="handled">
-                {sparks.map(spark => (
-                  <View key={spark.id} style={s.row}>
-                    <View style={s.dot} />
-                    <Text style={s.sparkText} numberOfLines={2}>{spark.text}</Text>
-                    <View style={s.rowBtns}>
-                      <TouchableOpacity style={s.rowBtn} onPress={() => handlePromote(spark.id)}>
-                        <Text style={[s.rowBtnText, { color: tokens.accent }]}>↗</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={s.rowBtn} onPress={() => removeSpark(spark.id)}>
-                        <Text style={[s.rowBtnText, { color: tokens.textGhost }]}>✕</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))}
-              </ScrollView>
+        {suggestion && suggesting && (
+          <View style={s.suggCard}>
+            <Text style={s.suggText}>AI Suggestion</Text>
+            <Text style={s.suggTitle}>{suggestion.refined}</Text>
+            <Text style={s.suggMeta}>{Q_LABEL[suggestion.quadrant]} · {suggestion.reason}</Text>
+            <View style={s.suggBtns}>
+              <TouchableOpacity style={s.suggBtnFill} onPress={handleAccept}><Text style={s.suggBtnFillText}>Place on Matrix</Text></TouchableOpacity>
+              <TouchableOpacity style={s.suggBtnOutline} onPress={() => { setSuggesting(null); setSuggestion(null); }}><Text style={s.suggBtnOutlineText}>Dismiss</Text></TouchableOpacity>
             </View>
-          </KeyboardAvoidingView>
-        </TouchableWithoutFeedback>
+          </View>
+        )}
+
+        {thinking && <Text style={[s.suggText, { marginHorizontal: 16, marginBottom: 8 }]}>Thinking…</Text>}
+
+        <ScrollView style={s.list} keyboardShouldPersistTaps="handled">
+          {sparks.map(spark => (
+            <View key={spark.id} style={s.row}>
+              <View style={s.dot} />
+              <Text style={s.sparkText} numberOfLines={2}>{spark.text}</Text>
+              <View style={s.rowBtns}>
+                <TouchableOpacity style={s.rowBtn} onPress={() => handlePromote(spark.id)}>
+                  <Text style={[s.rowBtnText, { color: tokens.accent }]}>↗</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.rowBtn} onPress={() => removeSpark(spark.id)}>
+                  <Text style={[s.rowBtnText, { color: tokens.textGhost }]}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </ScrollView>
       </View>
-    </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }

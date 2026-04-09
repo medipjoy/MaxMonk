@@ -4,7 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
-import { moderateScale } from '../clearday/scale';
+import { moderateScale, fontScale } from '../clearday/scale';
+import { useClearDayStore } from '../clearday/store';
 
 interface Props {
   tokens: ThemeTokens;
@@ -16,6 +17,7 @@ interface Props {
 export function MITStrip({ tokens, fontChoice, mitText, onPress }: Props) {
   const fonts = getFontSet(fontChoice as any);
   const insets = useSafeAreaInsets();
+  const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
 
   const notchPadding = insets.top > 0 ? insets.top : 0;
   const stripHeight = 24 + notchPadding;
@@ -43,7 +45,7 @@ export function MITStrip({ tokens, fontChoice, mitText, onPress }: Props) {
             s.text,
             {
               fontFamily: fonts.serifItalic,
-              fontSize: moderateScale(mitText ? 10.5 : 10),
+              fontSize: fontScale(mitText ? 10.5 : 10, fontSizeMultiplier),
               color: mitText ? tokens.text : tokens.textGhost,
             },
           ]}

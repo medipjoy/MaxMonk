@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, TouchableWithoutFeedback } fr
 import { useClearDayStore } from '../clearday/store';
 import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
-import { moderateScale } from '../clearday/scale';
+import { moderateScale, fontScale } from '../clearday/scale';
 
 interface Props {
   tokens: ThemeTokens;
@@ -15,19 +15,20 @@ interface Props {
 export function MITCarryForwardModal({ tokens, fontChoice, onCarry, onDismiss }: Props) {
   const fonts = getFontSet(fontChoice as any);
   const { mit, setMit } = useClearDayStore();
+  const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
 
   const s = StyleSheet.create({
     overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: tokens.overlay, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
     card: { backgroundColor: tokens.surface, borderRadius: 12, padding: 16, width: '100%' },
-    label: { fontFamily: 'Inter_500Medium', fontSize: moderateScale(7.5), color: tokens.textGhost, letterSpacing: 0.1 * moderateScale(7.5), textTransform: 'uppercase', marginBottom: 8 },
-    heading: { fontFamily: fonts.serif, fontSize: moderateScale(11), color: tokens.text, marginBottom: 6 },
-    mitText: { fontFamily: fonts.serifItalic, fontSize: moderateScale(9), color: tokens.gold, marginBottom: 6 },
-    body: { fontFamily: fonts.serif, fontSize: moderateScale(8.5), color: tokens.textMuted, marginBottom: 16 },
+    label: { fontFamily: 'Inter_500Medium', fontSize: fontScale(7.5, fontSizeMultiplier), color: tokens.textGhost, letterSpacing: 0.1 * fontScale(7.5, fontSizeMultiplier), textTransform: 'uppercase', marginBottom: 8 },
+    heading: { fontFamily: fonts.serif, fontSize: fontScale(11, fontSizeMultiplier), color: tokens.text, marginBottom: 6 },
+    mitText: { fontFamily: fonts.serifItalic, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.gold, marginBottom: 6 },
+    body: { fontFamily: fonts.serif, fontSize: fontScale(8.5, fontSizeMultiplier), color: tokens.textMuted, marginBottom: 16 },
     buttons: { flexDirection: 'row', gap: 8 },
     btnOutline: { flex: 1, borderWidth: 0.5, borderColor: tokens.borderMid, borderRadius: 6, paddingVertical: 10, alignItems: 'center' },
     btnFill: { flex: 1, backgroundColor: tokens.text, borderRadius: 6, paddingVertical: 10, alignItems: 'center' },
-    btnOutlineText: { fontFamily: fonts.serif, fontSize: moderateScale(11), color: tokens.text },
-    btnFillText: { fontFamily: fonts.serif, fontSize: moderateScale(11), color: tokens.surface },
+    btnOutlineText: { fontFamily: fonts.serif, fontSize: fontScale(11, fontSizeMultiplier), color: tokens.text },
+    btnFillText: { fontFamily: fonts.serif, fontSize: fontScale(11, fontSizeMultiplier), color: tokens.surface },
   });
 
   return (

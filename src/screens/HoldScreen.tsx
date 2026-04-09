@@ -5,7 +5,7 @@ import Svg, { Line } from 'react-native-svg';
 import { useClearDayStore } from '../clearday/store';
 import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
-import { moderateScale } from '../clearday/scale';
+import { moderateScale, fontScale } from '../clearday/scale';
 import { NavCtx } from '../clearday/ClarityApp';
 
 interface Props { tokens: ThemeTokens; fontChoice: string; }
@@ -19,22 +19,23 @@ export function HoldScreen({ tokens, fontChoice }: Props) {
   const fonts = getFontSet(fontChoice as any);
   const nav = useContext(NavCtx);
   const { agendas, toggleHold, archiveAgenda } = useClearDayStore();
+  const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
   const onHold = agendas.filter(a => a.status === 'onhold');
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top },
     header: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: tokens.border },
     backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-    title: { fontFamily: fonts.serif, fontSize: moderateScale(22), color: tokens.text, fontWeight: '300', letterSpacing: -0.3 },
+    title: { fontFamily: fonts.serif, fontSize: fontScale(22, fontSizeMultiplier), color: tokens.text, fontWeight: '300', letterSpacing: -0.3 },
     scroll: { flex: 1 },
     row: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: tokens.border },
     dot: { width: 4, height: 4, borderRadius: 2, marginRight: 12 },
-    rowText: { flex: 1, fontFamily: fonts.serif, fontSize: moderateScale(12), color: tokens.text },
+    rowText: { flex: 1, fontFamily: fonts.serif, fontSize: fontScale(12, fontSizeMultiplier), color: tokens.text },
     rowBtns: { flexDirection: 'row' },
     rowBtn: { width: 32, height: 32, justifyContent: 'center', alignItems: 'center' },
-    rowBtnText: { fontSize: moderateScale(14), color: tokens.textMuted },
+    rowBtnText: { fontSize: fontScale(14, fontSizeMultiplier), color: tokens.textMuted },
     empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    emptyText: { fontFamily: fonts.serifItalic, fontSize: moderateScale(13), color: tokens.textGhost },
+    emptyText: { fontFamily: fonts.serifItalic, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.textGhost },
   });
 
   return (

@@ -20,7 +20,7 @@ export function getFontSet(choice: FontChoice): FontSet {
         sans: 'Cormorant_Garamond_400Regular',
         sansMedium: 'Cormorant_Garamond_600SemiBold',
         label: 'Inter_500Medium',
-        lineHeightMultiplier: 1.13,
+        lineHeightMultiplier: 1.27,
       };
     case 'baskerville':
       return {

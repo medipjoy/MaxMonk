@@ -33,7 +33,7 @@ import { Toast } from '../components/Toast';
 export type Screen = 'matrix' | 'active' | 'hold' | 'vault' | 'reflect' | 'settings';
 export type Panel = 'add' | 'edit' | 'sparks' | 'more' | 'mitSelector' | 'bubbleAction' | null;
 
-export interface AddSheetPreset { urgency: number; importance: number }
+export interface AddSheetPreset { urgency: number; importance: number; defaultDomain?: string }
 export interface BubbleActionTarget { agendaId: string }
 
 interface ClarityAppProps {
