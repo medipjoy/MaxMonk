@@ -64,8 +64,9 @@ const s = StyleSheet.create({
     borderBottomWidth: 0.5,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 12,
   },
   icon: { marginRight: 8 },
-  text: { flex: 1 },
+  text: { flex: 0, maxWidth: '75%' },
 });

@@ -13,7 +13,7 @@ import { moderateScale, fontScale } from '../clearday/scale';
 import { posFromSliders, qFromPos } from '../clearday/helpers';
 import { NavCtx, AddSheetPreset } from '../clearday/ClarityApp';
 
-const EFFORT_LABELS: Record<number, string> = { 1: 'Quick · <15 min', 2: '~1 hr', 3: '~3 hrs', 4: 'Half day', 5: 'Full day', 6: '2-3 days', 7: '1 week+' };
+const EFFORT_LABELS: Record<number, string> = { 1: 'Minimal', 2: 'Light', 3: 'Moderate', 4: 'Substantial', 5: 'Committed', 6: 'Extended', 7: 'Total' };
 const EFFORT_TIME: Record<number, string> = { 1: 'quick', 2: 'short', 3: 'medium', 4: 'medium', 5: 'deep', 6: 'deep', 7: 'deep' };
 const Q_LABEL: Record<string, string> = { Q1: 'Do Now', Q2: 'Schedule', Q3: 'Delegate', Q4: 'Eliminate' };
 
@@ -34,12 +34,12 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
   const fonts = getFontSet(fontChoice as any);
   const insets = useSafeAreaInsets();
   const nav = useContext(NavCtx);
-  const { config, agendas, mit, addAgenda, updateAgenda } = useClearDayStore();
+  const { config, agendas, mit, addAgenda, updateAgenda, removeSpark } = useClearDayStore();
   const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
 
   const existingAgenda = agendaId ? agendas.find(a => a.id === agendaId) : null;
 
-  const [title, setTitle] = useState(existingAgenda?.text ?? '');
+  const [title, setTitle] = useState(preset?.defaultText ?? existingAgenda?.text ?? '');
   const [urgency, setUrgency] = useState(
     preset?.urgency != null ? preset.urgency :
     existingAgenda?.cx != null ? Math.round(existingAgenda.cx * 90 + 5) : 50
@@ -58,7 +58,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 5,
     onPanResponderMove: () => {},
-    onPanResponderRelease: (_, gs) => { if (gs.dy > 80) onClose(); },
+    onPanResponderRelease: (_, gs) => { if (gs.dy > 50) onClose(); },
   })).current;
 
   useEffect(() => {
@@ -80,27 +80,30 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
     const timeVal = EFFORT_TIME[effort] as any;
     if (existingAgenda) {
       await updateAgenda(existingAgenda.id, { text: title.trim(), domain: selectedTag, time: timeVal, cx, cy });
+      if (preset?.sparkId) await removeSpark(preset.sparkId);
       onSave('Updated');
     } else {
       const agenda = await addAgenda({ text: title.trim(), domain: selectedTag, time: timeVal, urgency, importance });
       if (isMIT && agenda) {
         await useClearDayStore.getState().setMit(agenda.text);
       }
+      if (preset?.sparkId) await removeSpark(preset.sparkId);
       onSave('Added to ' + Q_LABEL[quadrant]);
     }
   };
 
   const s = StyleSheet.create({
     overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: tokens.overlay, justifyContent: 'flex-end' },
-    sheet: { backgroundColor: tokens.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: insets.bottom + 16, maxHeight: '90%' },
-    handle: { width: 36, height: 3, backgroundColor: tokens.border, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 12 },
+    sheet: { backgroundColor: tokens.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: insets.bottom + 16, maxHeight: '85%' },
+    handleArea: { width: '100%', alignItems: 'center', paddingTop: 8, paddingBottom: 8 },
+    handle: { width: 36, height: 3, backgroundColor: tokens.border, borderRadius: 2 },
     scroll: { paddingHorizontal: 16 },
     titleInput: { borderWidth: 0.5, borderColor: tokens.borderMid, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: tokens.surface2, fontFamily: fonts.serifItalic, fontSize: fontScale(14, fontSizeMultiplier), color: tokens.text, marginBottom: 8 },
     mitRow: { flexDirection: 'row', alignItems: 'center', height: 36, marginBottom: 8, gap: 8 },
     mitLabel: { fontFamily: fonts.serifItalic, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.textGhost },
-    sliderLabel: { fontFamily: 'Inter_500Medium', fontSize: fontScale(9, fontSizeMultiplier), color: tokens.textMuted, textTransform: 'uppercase', letterSpacing: 0.9, marginBottom: 2 },
+    sliderLabel: { fontFamily: fonts.sansMedium, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.textMuted, textTransform: 'uppercase', letterSpacing: 0.9, marginBottom: 2 },
     sliderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
-    sliderValue: { fontFamily: 'Inter_600SemiBold', fontSize: fontScale(13, fontSizeMultiplier), color: tokens.accent },
+    sliderValue: { fontFamily: fonts.serifBold, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.accent },
     sliderHelp: { fontFamily: fonts.serifItalic, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.textGhost, marginBottom: 10 },
     tagRow: { flexDirection: 'row', gap: 6, marginBottom: 12, flexWrap: 'wrap' },
     tagChip: { borderRadius: 4, paddingHorizontal: 10, paddingVertical: 5 },
@@ -154,7 +157,9 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
         <View style={{ flex: 1 }} />
       </TouchableWithoutFeedback>
       <View style={s.sheet}>
-        <View style={s.handle} {...dismissPan.panHandlers} />
+        <View style={s.handleArea} {...dismissPan.panHandlers}>
+          <View style={s.handle} />
+        </View>
         <ScrollView style={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                 {/* Title */}
                 <TextInput
@@ -194,7 +199,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
                 {/* Effort */}
                 <Text style={s.sliderLabel}>Effort</Text>
                 <View style={s.sliderRow}>
-                  <Slider style={{ flex: 1 }} minimumValue={1} maximumValue={7} step={1} value={effort} onValueChange={(v: number) => setEffort(Math.round(v))} minimumTrackTintColor={tokens.accent} maximumTrackTintColor={tokens.border} thumbTintColor={tokens.accent} />
+                  <Slider style={{ flex: 1 }} minimumValue={1} maximumValue={7} step={1} value={effort} onValueChange={(v: number) => setEffort(Math.round(v))} minimumTrackTintColor={tokens.textMuted} maximumTrackTintColor={tokens.border} thumbTintColor={tokens.textMuted} />
                   <Text style={[s.sliderValue, { fontSize: fontScale(11, fontSizeMultiplier) }]}>{EFFORT_LABELS[effort]}</Text>
                 </View>
 

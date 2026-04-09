@@ -50,10 +50,10 @@ export function BubbleActionSheet({ tokens, fontChoice, agendaId, onClose, onAct
   });
 
   const rows = [
-    { label: '✓  Done', color: tokens.q2, onPress: async () => { await completeAgenda(agendaId); onAction('Done'); } },
+    { label: '◦  Done', color: tokens.q2, onPress: async () => { await completeAgenda(agendaId); onAction('Done'); } },
     { label: '✎  Edit', color: tokens.textMuted, onPress: () => onEdit(agendaId) },
-    { label: isOnHold ? '▶  Resume' : '⏸  Hold', color: tokens.textMuted, onPress: async () => { await toggleHold(agendaId); onAction(isOnHold ? 'Resumed' : 'On hold'); } },
-    { label: '⊡  Archive', color: tokens.textMuted, onPress: async () => { await archiveAgenda(agendaId); onAction('Archived'); } },
+    { label: isOnHold ? '‹  Resume' : '–  Hold', color: tokens.textMuted, onPress: async () => { await toggleHold(agendaId); onAction(isOnHold ? 'Resumed' : 'On Hold'); } },
+    { label: '↓  Archive', color: tokens.textMuted, onPress: async () => { await archiveAgenda(agendaId); onAction('Archived'); } },
   ];
 
   return (

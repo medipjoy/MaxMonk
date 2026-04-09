@@ -58,11 +58,11 @@ export function HoldScreen({ tokens, fontChoice }: Props) {
               <View style={[s.dot, { backgroundColor: qColor(agenda.quadrant, tokens) }]} />
               <Text style={s.rowText} numberOfLines={1}>{agenda.text}</Text>
               <View style={s.rowBtns}>
-                <TouchableOpacity style={s.rowBtn} onPress={() => toggleHold(agenda.id)}>
-                  <Text style={s.rowBtnText}>▶</Text>
+                <TouchableOpacity style={s.rowBtn} onPress={async () => { await toggleHold(agenda.id); nav.showToast('Resumed'); }}>
+                  <Text style={s.rowBtnText}>‹</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.rowBtn} onPress={() => archiveAgenda(agenda.id)}>
-                  <Text style={s.rowBtnText}>⊡</Text>
+                <TouchableOpacity style={s.rowBtn} onPress={async () => { await archiveAgenda(agenda.id); nav.showToast('Archived'); }}>
+                  <Text style={s.rowBtnText}>↓</Text>
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>

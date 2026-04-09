@@ -82,6 +82,7 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
 
   const holdCount = agendas.filter(a => a.status === 'onhold').length;
   const archiveCount = vault.length;
+  const completedCount = agendas.filter(a => a.status === 'done').length;
 
   const currentFontSize = config.fontSizeMultiplier ?? 1.0;
   const fontSizeMultiplier = currentFontSize;
@@ -94,7 +95,7 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
     backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
     title: { fontFamily: fonts.serif, fontSize: fontScale(22, fontSizeMultiplier), color: tokens.text, fontWeight: '300', letterSpacing: -0.3 },
     scroll: { flex: 1 },
-    sectionLabel: { fontFamily: 'Inter_500Medium', fontSize: fontScale(7, fontSizeMultiplier), color: tokens.textGhost, textTransform: 'uppercase', letterSpacing: 0.12 * fontScale(7, fontSizeMultiplier), paddingHorizontal: 16, paddingTop: 20, paddingBottom: 6 },
+    sectionLabel: { fontFamily: fonts.sansMedium, fontSize: fontScale(7, fontSizeMultiplier), color: tokens.textGhost, textTransform: 'uppercase', letterSpacing: 0.12 * fontScale(7, fontSizeMultiplier), paddingHorizontal: 16, paddingTop: 20, paddingBottom: 6 },
     row: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: tokens.border, justifyContent: 'space-between' },
     rowLabel: { fontFamily: fonts.serif, fontSize: fontScale(12, fontSizeMultiplier), color: tokens.text },
     rowValue: { fontFamily: fonts.serif, fontSize: fontScale(12, fontSizeMultiplier), color: tokens.textMuted },
@@ -189,6 +190,10 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
         <TouchableOpacity style={s.row} onPress={() => nav.goTo('vault')}>
           <Text style={s.rowLabel}>Archive</Text>
           <Text style={s.rowValue}>{archiveCount} items →</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.row} onPress={() => nav.goTo('completed')}>
+          <Text style={s.rowLabel}>Completed</Text>
+          <Text style={s.rowValue}>{completedCount} items →</Text>
         </TouchableOpacity>
 
         {/* Clarity footer */}
