@@ -32,7 +32,7 @@ import { Toast } from '../components/Toast';
 export type Screen = 'matrix' | 'active' | 'hold' | 'vault' | 'settings' | 'completed';
 export type Panel = 'add' | 'edit' | 'more' | 'mitSelector' | 'bubbleAction' | null;
 
-export interface AddSheetPreset { urgency: number; importance: number; defaultDomain?: string; defaultText?: string; }
+export interface AddSheetPreset { urgency: number; importance: number; defaultDomain?: string; defaultText?: string; addToHold?: boolean; }
 export interface BubbleActionTarget { agendaId: string }
 
 interface ClarityAppProps {
@@ -274,6 +274,11 @@ function PillIcons({ screen, tokens, goTo, openPanel, fsm }: { screen: Screen; t
       <PillButton onPress={() => openPanel('more')} active={false} indicatorColor={indicatorColor} fsm={fsm}>
         <DotsIcon color={iconColor(false)} size={iconSize} />
       </PillButton>
+
+      {/* Plus — Add */}
+      <PillButton onPress={() => openPanel('add')} active={false} indicatorColor={indicatorColor} fsm={fsm}>
+        <PlusIcon color={tokens.accent} size={iconSize} />
+      </PillButton>
     </>
   );
 }
@@ -414,6 +419,16 @@ function ListIcon({ color, size }: { color: string; size: number }) {
       <Line x1={gap} y1={gap} x2={size - gap} y2={gap} stroke={color} strokeWidth={1.75} strokeLinecap="round" />
       <Line x1={gap} y1={size / 2} x2={size - gap} y2={size / 2} stroke={color} strokeWidth={1.75} strokeLinecap="round" />
       <Line x1={gap} y1={size - gap} x2={size - gap} y2={size - gap} stroke={color} strokeWidth={1.75} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function PlusIcon({ color, size }: { color: string; size: number }) {
+  const c = size / 2;
+  return (
+    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <Line x1={c} y1={2} x2={c} y2={size - 2} stroke={color} strokeWidth={1.75} strokeLinecap="round" />
+      <Line x1={2} y1={c} x2={size - 2} y2={c} stroke={color} strokeWidth={1.75} strokeLinecap="round" />
     </Svg>
   );
 }

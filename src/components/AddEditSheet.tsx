@@ -15,6 +15,8 @@ import { NavCtx, AddSheetPreset } from '../clearday/ClarityApp';
 
 const EFFORT_LABELS: Record<number, string> = { 1: 'Minimal', 2: 'Light', 3: 'Moderate', 4: 'Substantial', 5: 'Committed', 6: 'Extended', 7: 'Total' };
 const EFFORT_TIME: Record<number, string> = { 1: 'quick', 2: 'short', 3: 'medium', 4: 'medium', 5: 'deep', 6: 'deep', 7: 'deep' };
+const EFFORT_RADII: Record<string, number> = { quick: 20, short: 29, medium: 38, deep: 50 };
+function getRadius(time: string) { return EFFORT_RADII[time] ?? 29; }
 const Q_LABEL: Record<string, string> = { Q1: 'Do Now', Q2: 'Schedule', Q3: 'Delegate', Q4: 'Eliminate' };
 
 function qColor(q: string, tokens: ThemeTokens) {
@@ -53,6 +55,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
     existingAgenda?.domain ?? preset?.defaultDomain ?? config.tags[0]
   );
   const [isMIT, setIsMIT] = useState(false);
+  const [sliderKey, setSliderKey] = useState(0);
 
   const dismissPan = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => true,
@@ -66,6 +69,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
       setUrgency(preset.urgency);
       setImportance(preset.importance);
       if (preset.defaultDomain) setSelectedTag(preset.defaultDomain);
+      setSliderKey(k => k + 1); // force slider remount so visual position matches value
     }
   }, [preset]);
 
@@ -83,10 +87,11 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
       onSave('Updated');
     } else {
       const agenda = await addAgenda({ text: title.trim(), domain: selectedTag, time: timeVal, urgency, importance });
-      if (isMIT && agenda) {
-        await useClearDayStore.getState().setMit(agenda.text);
+      if (agenda) {
+        if (isMIT) await useClearDayStore.getState().setMit(agenda.text);
+        if (preset?.addToHold) await useClearDayStore.getState().toggleHold(agenda.id);
       }
-      onSave('Added to ' + Q_LABEL[quadrant]);
+      onSave(preset?.addToHold ? 'Added to Hold' : 'Added to ' + Q_LABEL[quadrant]);
     }
   };
 
@@ -130,12 +135,15 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
     </Svg>
   );
 
-  // Mini SVG matrix — always tinted, shows dot at current urgency/importance position
+  // Mini SVG matrix — always tinted, shows bubble at current urgency/importance/effort
   const QuadPreview = () => {
     const S = 80;
     const half = S / 2;
     const dotX = (urgency / 100) * S;
     const dotY = (1 - importance / 100) * S;
+    // Scale effort radius proportionally to the 80px preview (main canvas ~360px)
+    const fullRadius = getRadius(EFFORT_TIME[effort] as any);
+    const previewR = Math.max(3, Math.round(fullRadius * 80 / 360));
     return (
       <Svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
         <Rect x={0} y={0} width={half} height={half} fill={tokens.q2Wash} />
@@ -148,7 +156,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
         <SvgText x={S - 3} y={half - 3} fontSize={5} fill={tokens.q1} opacity={0.5} textAnchor="end" fontStyle="italic">Now</SvgText>
         <SvgText x={3} y={S - 3} fontSize={5} fill={tokens.q4} opacity={0.5} fontStyle="italic">Elim</SvgText>
         <SvgText x={S - 3} y={S - 3} fontSize={5} fill={tokens.q3} opacity={0.5} textAnchor="end" fontStyle="italic">Del</SvgText>
-        <Circle cx={dotX} cy={dotY} r={4} fill={quadColor} opacity={0.85} />
+        <Circle cx={dotX} cy={dotY} r={previewR} fill={quadColor} opacity={0.72} stroke={quadColor} strokeOpacity={0.75} strokeWidth={0.75} />
       </Svg>
     );
   };
@@ -188,7 +196,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
                 {/* Urgency */}
                 <Text style={s.sliderLabel}>Urgency</Text>
                 <View style={s.sliderRow}>
-                  <Slider style={{ flex: 1 }} minimumValue={5} maximumValue={95} step={1} value={urgency} onValueChange={(v: number) => setUrgency(Math.round(v))} minimumTrackTintColor={tokens.accent} maximumTrackTintColor={tokens.border} thumbTintColor={tokens.accent} />
+                  <Slider key={`urgency-${sliderKey}`} style={{ flex: 1 }} minimumValue={5} maximumValue={95} step={1} value={urgency} onValueChange={(v: number) => setUrgency(Math.round(v))} minimumTrackTintColor={tokens.accent} maximumTrackTintColor={tokens.border} thumbTintColor={tokens.accent} />
                   <Text style={s.sliderValue}>{urgency}</Text>
                 </View>
                 <Text style={s.sliderHelp}>Urgent = delay creates real consequences</Text>
@@ -196,7 +204,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
                 {/* Importance */}
                 <Text style={s.sliderLabel}>Importance</Text>
                 <View style={s.sliderRow}>
-                  <Slider style={{ flex: 1 }} minimumValue={5} maximumValue={95} step={1} value={importance} onValueChange={(v: number) => setImportance(Math.round(v))} minimumTrackTintColor={tokens.accent} maximumTrackTintColor={tokens.border} thumbTintColor={tokens.accent} />
+                  <Slider key={`importance-${sliderKey}`} style={{ flex: 1 }} minimumValue={5} maximumValue={95} step={1} value={importance} onValueChange={(v: number) => setImportance(Math.round(v))} minimumTrackTintColor={tokens.accent} maximumTrackTintColor={tokens.border} thumbTintColor={tokens.accent} />
                   <Text style={s.sliderValue}>{importance}</Text>
                 </View>
                 <Text style={s.sliderHelp}>Important = advances your goals, not someone else's urgency</Text>

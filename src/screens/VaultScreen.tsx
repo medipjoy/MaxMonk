@@ -54,12 +54,12 @@ export function VaultScreen({ tokens, fontChoice }: Props) {
         <ScrollView style={s.scroll}>
           {vault.map(entry => (
             <View key={entry.id} style={s.row}>
-              <TouchableOpacity style={s.rowBtn} onPress={async () => { await restoreVaultToActive(entry.id); nav.goTo('matrix'); nav.showToast('Back on matrix'); }}>
-                <Text style={[s.rowBtnText, { color: tokens.accent }]}>⊕</Text>
-              </TouchableOpacity>
               <View style={[s.dot, { backgroundColor: qColor(entry.quadrant, tokens) }]} />
               <Text style={s.rowText} numberOfLines={1}>{entry.text}</Text>
               <View style={s.rowBtns}>
+                <TouchableOpacity style={s.rowBtn} onPress={async () => { await restoreVaultToActive(entry.id); nav.goTo('matrix'); nav.showToast('Back on matrix'); }}>
+                  <Text style={[s.rowBtnText, { color: tokens.accent }]}>+</Text>
+                </TouchableOpacity>
                 <TouchableOpacity style={s.rowBtn} onPress={async () => { await restoreVaultAgenda(entry.id); nav.showToast('To Hold'); }}>
                   <Text style={s.rowBtnText}>↑</Text>
                 </TouchableOpacity>

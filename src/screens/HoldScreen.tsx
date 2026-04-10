@@ -36,6 +36,10 @@ export function HoldScreen({ tokens, fontChoice }: Props) {
     rowBtnText: { fontSize: fontScale(14, fontSizeMultiplier), color: tokens.textMuted },
     empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyText: { fontFamily: fonts.serifItalic, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.textGhost },
+    addBar: { borderTopWidth: 0.5, borderTopColor: tokens.border, paddingBottom: insets.bottom + 8, paddingTop: 8, alignItems: 'center' },
+    addBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, borderWidth: 0.5, borderColor: tokens.borderMid },
+    addBtnText: { fontFamily: fonts.serif, fontSize: fontScale(12, fontSizeMultiplier), color: tokens.textMuted },
+    addBtnPlus: { fontFamily: fonts.serif, fontSize: fontScale(16, fontSizeMultiplier), color: tokens.accent, lineHeight: fontScale(18, fontSizeMultiplier) },
   });
 
   return (
@@ -59,7 +63,7 @@ export function HoldScreen({ tokens, fontChoice }: Props) {
               <Text style={s.rowText} numberOfLines={1}>{agenda.text}</Text>
               <View style={s.rowBtns}>
                 <TouchableOpacity style={s.rowBtn} onPress={async () => { await toggleHold(agenda.id); nav.showToast('Resumed'); }}>
-                  <Text style={s.rowBtnText}>‹</Text>
+                  <Text style={[s.rowBtnText, { color: tokens.accent }]}>+</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.rowBtn} onPress={async () => { await archiveAgenda(agenda.id); nav.showToast('Archived'); }}>
                   <Text style={s.rowBtnText}>↓</Text>
@@ -69,6 +73,17 @@ export function HoldScreen({ tokens, fontChoice }: Props) {
           ))}
         </ScrollView>
       )}
+
+      {/* Add button — new agendas go directly to hold */}
+      <View style={s.addBar}>
+        <TouchableOpacity style={s.addBtn} onPress={() => {
+          nav.setAddSheetPreset({ urgency: 50, importance: 50, addToHold: true });
+          nav.openPanel('add');
+        }}>
+          <Text style={s.addBtnPlus}>+</Text>
+          <Text style={s.addBtnText}>Add</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
