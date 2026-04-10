@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { Agenda, AgendaDomain, AgendaTime, AppConfig, DEFAULT_QUADRANT_LABELS, DEFAULT_TAGS, Spark, VaultEntry } from './types';
+import { Agenda, AgendaDomain, AgendaTime, AppConfig, DEFAULT_QUADRANT_LABELS, DEFAULT_TAGS, VaultEntry } from './types';
 import { STORAGE_KEYS, todayKey } from './helpers';
 
 let asyncStorage: any = null;
@@ -49,14 +49,6 @@ export async function saveVault(vault: VaultEntry[]): Promise<void> {
   await setItem(STORAGE_KEYS.vault, vault);
 }
 
-export async function loadSparks(): Promise<Spark[]> {
-  return getItem<Spark[]>(STORAGE_KEYS.sparks, []);
-}
-
-export async function saveSparks(sparks: Spark[]): Promise<void> {
-  await setItem(STORAGE_KEYS.sparks, sparks);
-}
-
 export async function loadConfig(): Promise<AppConfig> {
   return getItem<AppConfig>(STORAGE_KEYS.config, {
     name: 'Me',
@@ -70,6 +62,7 @@ export async function loadConfig(): Promise<AppConfig> {
     matrixStyle: 'tinted',
     mitResetHour: 0,
     fontSizeMultiplier: 1.0,
+    vaultRetentionDays: 30,
   });
 }
 

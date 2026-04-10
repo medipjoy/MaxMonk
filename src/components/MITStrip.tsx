@@ -20,7 +20,7 @@ export function MITStrip({ tokens, fontChoice, mitText, onPress }: Props) {
   const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
 
   const notchPadding = insets.top > 0 ? insets.top : 0;
-  const stripHeight = 24 + notchPadding;
+  const stripHeight = 28 + notchPadding;
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
@@ -45,7 +45,7 @@ export function MITStrip({ tokens, fontChoice, mitText, onPress }: Props) {
             s.text,
             {
               fontFamily: fonts.serifItalic,
-              fontSize: fontScale(mitText ? 10.5 : 10, fontSizeMultiplier),
+              fontSize: fontScale(mitText ? 13.5 : 13, fontSizeMultiplier),
               color: mitText ? tokens.text : tokens.textGhost,
             },
           ]}

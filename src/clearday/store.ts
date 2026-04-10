@@ -1,16 +1,13 @@
 import { create } from 'zustand';
-import { pulse, reflectDay, suggestFromSpark } from './aiStub';
 import { EXPIRY_DAYS, isCenterPoint, posFromSliders, qFromPos, uid } from './helpers';
 import { runMigrationIfNeeded } from './migration';
 import {
   loadAgendas,
   loadConfig,
-  loadSparks,
   loadTodayMit,
   loadVault,
   saveAgendas,
   saveConfig,
-  saveSparks,
   saveTodayMit,
   saveVault,
 } from './storage';
@@ -23,11 +20,8 @@ import {
   DEFAULT_QUADRANT_LABELS,
   DEFAULT_TAGS,
   ExpiryDefault,
-  PulseInsight,
   Quadrant,
   QUADRANT_LABEL_MAX_LENGTH,
-  Spark,
-  SparkSuggestion,
   TAG_MAX_LENGTH,
   ThemeMode,
   VaultEntry,
@@ -37,12 +31,8 @@ interface ClearDayState {
   ready: boolean;
   agendas: Agenda[];
   vault: VaultEntry[];
-  sparks: Spark[];
   mit: string;
   config: AppConfig;
-  reflection: string;
-  weeklyPulse: PulseInsight | null;
-  monthlyPulse: PulseInsight | null;
 
   bootstrap: () => Promise<void>;
   setName: (name: string) => Promise<void>;
@@ -55,6 +45,7 @@ interface ClearDayState {
   removeTag: (tag: string) => Promise<boolean>;
   renameTag: (oldTag: string, newTag: string) => Promise<boolean>;
   setMit: (mit: string) => Promise<void>;
+  setVaultRetentionDays: (days: number) => Promise<void>;
 
   addAgenda: (input: {
     text: string;
@@ -63,10 +54,6 @@ interface ClearDayState {
     urgency: number;
     importance: number;
   }) => Promise<Agenda | null>;
-  addSpark: (text: string) => Promise<void>;
-  removeSpark: (id: string) => Promise<void>;
-  suggestSpark: (spark: Spark) => Promise<SparkSuggestion>;
-  acceptSpark: (sparkId: string, suggestion: SparkSuggestion) => Promise<void>;
 
   updateAgendaPosition: (id: string, cx: number, cy: number) => Promise<void>;
   completeAgenda: (id: string) => Promise<void>;
@@ -83,13 +70,10 @@ interface ClearDayState {
   bulkHold: (ids: string[]) => Promise<void>;
   bulkResume: (ids: string[]) => Promise<void>;
   bulkDelete: (ids: string[]) => Promise<void>;
-
-  runReflection: () => Promise<void>;
-  runPulse: (period: 'week' | 'month') => Promise<void>;
 }
 
-async function persistSnapshot(state: Pick<ClearDayState, 'agendas' | 'vault' | 'sparks'>): Promise<void> {
-  await Promise.all([saveAgendas(state.agendas), saveVault(state.vault), saveSparks(state.sparks)]);
+async function persistSnapshot(state: Pick<ClearDayState, 'agendas' | 'vault'>): Promise<void> {
+  await Promise.all([saveAgendas(state.agendas), saveVault(state.vault)]);
 }
 
 function expiryDaysPassed(fromTs: number): number {
@@ -115,6 +99,11 @@ function applyHoldExpiryPolicy(agendas: Agenda[], holdExpiryDefault: ExpiryDefau
     vaulted.push({ ...agenda, archivedAt: Date.now() });
   });
   return { agendas: keep, vault: vaulted };
+}
+
+function applyVaultRetentionPolicy(vault: VaultEntry[], retentionDays: number): VaultEntry[] {
+  if (retentionDays <= 0) return vault; // 0 = never auto-delete
+  return vault.filter((e) => expiryDaysPassed(e.archivedAt) < retentionDays);
 }
 
 function normalizeTagList(input: string[]): string[] {
@@ -155,7 +144,6 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
   ready: false,
   agendas: [],
   vault: [],
-  sparks: [],
   mit: '',
   config: {
     name: 'Me',
@@ -169,17 +157,14 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     matrixStyle: 'tinted',
     mitResetHour: 0,
     fontSizeMultiplier: 1.0,
+    vaultRetentionDays: 30,
   },
-  reflection: '',
-  weeklyPulse: null,
-  monthlyPulse: null,
 
   bootstrap: async () => {
     await runMigrationIfNeeded();
-    const [loadedAgendas, loadedVault, sparks, mit, rawConfig] = await Promise.all([
+    const [loadedAgendas, loadedVault, mit, rawConfig] = await Promise.all([
       loadAgendas(),
       loadVault(),
-      loadSparks(),
       loadTodayMit(),
       loadConfig(),
     ]);
@@ -196,17 +181,19 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
       matrixStyle: rawConfig.matrixStyle || 'tinted',
       mitResetHour: rawConfig.mitResetHour ?? 0,
       fontSizeMultiplier: rawConfig.fontSizeMultiplier ?? 1.0,
+      vaultRetentionDays: rawConfig.vaultRetentionDays ?? 30,
     };
     const normalizedAgendas = loadedAgendas.map((a) => ({ ...a, domain: resolveTag(a.domain, tags) }));
     const normalizedVault = loadedVault.map((v) => ({ ...v, domain: resolveTag(v.domain, tags) }));
     const holdPolicy = applyHoldExpiryPolicy(normalizedAgendas, config.holdExpiryDefault);
     const agendas = holdPolicy.agendas;
-    const vault = [...holdPolicy.vault, ...normalizedVault];
+    const vault = applyVaultRetentionPolicy([...holdPolicy.vault, ...normalizedVault], config.vaultRetentionDays);
 
-    set({ agendas, vault, sparks, mit, config, ready: true });
+    set({ agendas, vault, mit, config, ready: true });
 
     const tagsChanged = JSON.stringify(rawConfig.tags ?? []) !== JSON.stringify(tags);
-    if (holdPolicy.vault.length > 0 || tagsChanged) {
+    const vaultChanged = vault.length !== [...holdPolicy.vault, ...normalizedVault].length;
+    if (holdPolicy.vault.length > 0 || tagsChanged || vaultChanged) {
       await Promise.all([saveAgendas(agendas), saveVault(vault), saveConfig(config)]);
     }
   },
@@ -340,51 +327,6 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     return agenda;
   },
 
-  addSpark: async (text: string) => {
-    const clean = text.trim().slice(0, AGENDA_TITLE_MAX_LENGTH);
-    if (!clean) return;
-    const spark: Spark = { id: uid(), text: clean, createdAt: Date.now() };
-    const sparks = [spark, ...get().sparks];
-    set({ sparks });
-    await saveSparks(sparks);
-  },
-
-  removeSpark: async (id: string) => {
-    const sparks = get().sparks.filter((s) => s.id !== id);
-    set({ sparks });
-    await saveSparks(sparks);
-  },
-
-  suggestSpark: async (spark: Spark) => {
-    const base = await suggestFromSpark(spark.text);
-    const tags = get().config.tags;
-    const hash = spark.text
-      .split('')
-      .reduce((acc, ch) => ((acc << 5) - acc + ch.charCodeAt(0)) | 0, 0);
-    const fallbackTag = tags[Math.abs(hash) % tags.length] || tags[0] || DEFAULT_TAGS[0];
-    return { ...base, domain: resolveTag(base.domain || fallbackTag, tags) };
-  },
-
-  acceptSpark: async (sparkId: string, suggestion: SparkSuggestion) => {
-    const { cx, cy } = posFromSliders(suggestion.urgency, suggestion.importance);
-    const tag = resolveTag(suggestion.domain, get().config.tags);
-    const agenda: Agenda = {
-      id: uid(),
-      text: suggestion.refined.trim().slice(0, AGENDA_TITLE_MAX_LENGTH),
-      domain: tag,
-      time: suggestion.time,
-      cx,
-      cy,
-      quadrant: qFromPos(cx, cy),
-      status: 'active',
-      createdAt: Date.now(),
-    };
-    const agendas = [agenda, ...get().agendas];
-    const sparks = get().sparks.filter((s) => s.id !== sparkId);
-    set({ agendas, sparks });
-    await Promise.all([saveAgendas(agendas), saveSparks(sparks)]);
-  },
-
   updateAgendaPosition: async (id: string, cx: number, cy: number) => {
     const agendas = get().agendas.map((a) => {
       if (a.id !== id) return a;
@@ -448,7 +390,7 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     const entry: VaultEntry = { ...agenda, archivedAt: Date.now() };
     const vault = [entry, ...get().vault];
     set({ agendas, vault });
-    await persistSnapshot({ agendas, vault, sparks: get().sparks });
+    await persistSnapshot({ agendas, vault });
   },
 
   restoreVaultAgenda: async (id: string) => {
@@ -458,7 +400,7 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     const { archivedAt, ...agenda } = entry;
     const agendas = [{ ...agenda, status: 'onhold' as const, onHoldAt: undefined }, ...get().agendas];
     set({ agendas, vault });
-    await persistSnapshot({ agendas, vault, sparks: get().sparks });
+    await persistSnapshot({ agendas, vault });
   },
 
   restoreVaultToActive: async (id: string) => {
@@ -468,7 +410,7 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     const { archivedAt, ...agenda } = entry;
     const agendas = [{ ...agenda, status: 'active' as const, onHoldAt: undefined }, ...get().agendas];
     set({ agendas, vault });
-    await persistSnapshot({ agendas, vault, sparks: get().sparks });
+    await persistSnapshot({ agendas, vault });
   },
 
   deleteVaultAgenda: async (id: string) => {
@@ -484,7 +426,7 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     const agendas = get().agendas.filter((a) => !idSet.has(a.id));
     const vault = [...toVault, ...get().vault];
     set({ agendas, vault });
-    await persistSnapshot({ agendas, vault, sparks: get().sparks });
+    await persistSnapshot({ agendas, vault });
   },
 
   bulkHold: async (ids: string[]) => {
@@ -516,20 +458,9 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     await Promise.all([saveAgendas(agendas), saveVault(vault)]);
   },
 
-  runReflection: async () => {
-    const all = get().agendas;
-    const done = all.filter((a) => a.status === 'done');
-    const active = all.filter((a) => a.status !== 'done');
-    const reflection = await reflectDay(get().mit, done, active);
-    set({ reflection });
-  },
-
-  runPulse: async (period: 'week' | 'month') => {
-    const days = period === 'week' ? 7 : 30;
-    const since = Date.now() - days * 24 * 60 * 60 * 1000;
-    const source = [...get().agendas, ...get().vault].filter((a) => a.createdAt >= since);
-    const result = await pulse(period === 'week' ? 'Weekly Pulse' : 'Monthly Pulse', source);
-    if (period === 'week') set({ weeklyPulse: result });
-    else set({ monthlyPulse: result });
+  setVaultRetentionDays: async (days: number) => {
+    const next = { ...get().config, vaultRetentionDays: days };
+    set({ config: next });
+    await saveConfig(next);
   },
 }));

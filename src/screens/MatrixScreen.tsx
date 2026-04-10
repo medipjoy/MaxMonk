@@ -2,7 +2,7 @@ import React, { useCallback, useContext, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, LayoutChangeEvent,
   TouchableOpacity, TouchableWithoutFeedback, PanResponder,
-  Animated, Platform, ScrollView,
+  Animated, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Text as SvgText, Rect } from 'react-native-svg';
@@ -41,47 +41,6 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
   const [selectedTags, setSelectedTags] = useState<Set<string> | null>(null); // null = all
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const canvasRef = useRef<View>(null);
-  const [zoom, setZoom] = useState(1); // 1 | 1.5 | 2
-  const ZOOM_LEVELS = [1, 1.5, 2];
-  const panX = useRef(new Animated.Value(0)).current;
-  const panY = useRef(new Animated.Value(0)).current;
-  const panOffset = useRef({ x: 0, y: 0 });
-
-  const canvasPan = useRef(PanResponder.create({
-    onStartShouldSetPanResponder: () => false,
-    onMoveShouldSetPanResponder: (_, gs) => zoom > 1 && (Math.abs(gs.dx) > 4 || Math.abs(gs.dy) > 4),
-    onPanResponderGrant: () => {
-      panX.stopAnimation(v => { panOffset.current.x = v; });
-      panY.stopAnimation(v => { panOffset.current.y = v; });
-    },
-    onPanResponderMove: (_, gs) => {
-      const maxPan = canvasSize.width * (zoom - 1) / 2;
-      const maxPanY = canvasSize.height * (zoom - 1) / 2;
-      const nx = Math.max(-maxPan, Math.min(maxPan, panOffset.current.x + gs.dx));
-      const ny = Math.max(-maxPanY, Math.min(maxPanY, panOffset.current.y + gs.dy));
-      panX.setValue(nx);
-      panY.setValue(ny);
-    },
-    onPanResponderRelease: (_, gs) => {
-      const maxPan = canvasSize.width * (zoom - 1) / 2;
-      const maxPanY = canvasSize.height * (zoom - 1) / 2;
-      panOffset.current.x = Math.max(-maxPan, Math.min(maxPan, panOffset.current.x + gs.dx));
-      panOffset.current.y = Math.max(-maxPanY, Math.min(maxPanY, panOffset.current.y + gs.dy));
-    },
-  })).current;
-
-  const handleZoomIn = () => {
-    const i = ZOOM_LEVELS.indexOf(zoom);
-    if (i < ZOOM_LEVELS.length - 1) setZoom(ZOOM_LEVELS[i + 1]);
-  };
-  const handleZoomOut = () => {
-    const i = ZOOM_LEVELS.indexOf(zoom);
-    if (i > 0) {
-      setZoom(ZOOM_LEVELS[i - 1]);
-      if (i - 1 === 0) { panX.setValue(0); panY.setValue(0); panOffset.current = { x: 0, y: 0 }; }
-    }
-  };
-
   // Single vs double tap detection
   const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
   const tapCountRef = useRef(0);
@@ -89,6 +48,7 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
 
   const config = useClearDayStore(s => s.config);
   const allTags = config.tags;
+  const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
 
   const effectiveTags = selectedTags ?? new Set(allTags);
 
@@ -136,22 +96,11 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: tokens.bg },
-    filterRow: { height: 22, paddingHorizontal: 10, flexDirection: 'row', gap: 4, alignItems: 'center', justifyContent: 'center' },
+    filterRow: { height: 26, paddingHorizontal: 10, flexDirection: 'row', gap: 4, alignItems: 'center', justifyContent: 'center' },
     chip: { flexDirection: 'row', alignItems: 'center', borderRadius: 2, paddingHorizontal: 6, paddingVertical: 1, gap: 4 },
     chipDot: { width: 3, height: 3, borderRadius: 1.5 },
-    chipText: { fontSize: 6.5 },
-    canvas: { flex: 1, position: 'relative', paddingHorizontal: 8, paddingTop: 8, paddingBottom: 35 },
-    sparksBtn: { position: 'absolute', top: 8, right: 8, width: 28, height: 28, justifyContent: 'center', alignItems: 'center' },
-    zoomControls: {
-      position: 'absolute', bottom: 40, right: 8,
-      flexDirection: 'column', gap: 2,
-    },
-    zoomBtn: {
-      width: 26, height: 26, borderRadius: 4,
-      backgroundColor: tokens.surface, borderWidth: 0.5, borderColor: tokens.borderMid,
-      justifyContent: 'center', alignItems: 'center',
-    },
-    zoomBtnText: { fontSize: 14, color: tokens.textMuted, lineHeight: 18 },
+    chipText: { fontSize: fontScale(8.5, fontSizeMultiplier) },
+    canvas: { flex: 1, position: 'relative', paddingHorizontal: 8, paddingTop: 4, paddingBottom: 8 },
     q1Warning: {
       position: 'absolute', right: 6, bottom: canvasSize.height / 2 + 4,
       backgroundColor: 'rgba(184,50,50,0.08)', borderWidth: 1, borderColor: 'rgba(184,50,50,0.22)',
@@ -172,10 +121,10 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
         <Svg width={svgW} height={svgH} style={{ position: 'absolute', top: 8, left: 8 }} pointerEvents="none">
           <Line x1={svgW / 2} y1={0} x2={svgW / 2} y2={svgH} stroke={tokens.axisLine} strokeWidth={1} />
           <Line x1={0} y1={svgH / 2} x2={svgW} y2={svgH / 2} stroke={tokens.axisLine} strokeWidth={1} />
-          <SvgText x={svgW / 2 - 4} y={svgH / 2 - 6} fontSize={8} fill={tokens.q2} opacity={0.15} fontStyle="italic" textAnchor="end">Schedule</SvgText>
-          <SvgText x={svgW / 2 + 4} y={svgH / 2 - 6} fontSize={8} fill={tokens.q1} opacity={0.15} fontStyle="italic">Do Now</SvgText>
-          <SvgText x={svgW / 2 - 4} y={svgH / 2 + 12} fontSize={8} fill={tokens.q4} opacity={0.15} fontStyle="italic" textAnchor="end">Eliminate</SvgText>
-          <SvgText x={svgW / 2 + 4} y={svgH / 2 + 12} fontSize={8} fill={tokens.q3} opacity={0.15} fontStyle="italic">Delegate</SvgText>
+          <SvgText x={svgW / 2 - 4} y={svgH / 2 - 6} fontSize={10.5 * fontSizeMultiplier} fill={tokens.q2} opacity={0.15} fontStyle="italic" textAnchor="end">Schedule</SvgText>
+          <SvgText x={svgW / 2 + 4} y={svgH / 2 - 6} fontSize={10.5 * fontSizeMultiplier} fill={tokens.q1} opacity={0.15} fontStyle="italic">Do Now</SvgText>
+          <SvgText x={svgW / 2 - 4} y={svgH / 2 + 14} fontSize={10.5 * fontSizeMultiplier} fill={tokens.q4} opacity={0.15} fontStyle="italic" textAnchor="end">Eliminate</SvgText>
+          <SvgText x={svgW / 2 + 4} y={svgH / 2 + 14} fontSize={10.5 * fontSizeMultiplier} fill={tokens.q3} opacity={0.15} fontStyle="italic">Delegate</SvgText>
         </Svg>
       );
     }
@@ -200,8 +149,8 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
           {majorLines.map((l, i) => <Line key={`mj${i}`} x1={(l.props as any).x1} y1={(l.props as any).y1} x2={(l.props as any).x2} y2={(l.props as any).y2} stroke="rgba(0,0,0,0.08)" strokeWidth={1} />)}
           <Line x1={svgW / 2} y1={0} x2={svgW / 2} y2={svgH} stroke="rgba(0,0,0,0.14)" strokeWidth={1} />
           <Line x1={0} y1={svgH / 2} x2={svgW} y2={svgH / 2} stroke="rgba(0,0,0,0.14)" strokeWidth={1} />
-          <SvgText x={svgW - 4} y={svgH / 2 - 4} fontSize={6.5} fill={tokens.textGhost} textAnchor="end" fontStyle="italic">urgency →</SvgText>
-          <SvgText x={4} y={6} fontSize={6.5} fill={tokens.textGhost} fontStyle="italic">importance ↑</SvgText>
+          <SvgText x={svgW - 4} y={svgH / 2 - 4} fontSize={8.5 * fontSizeMultiplier} fill={tokens.textGhost} textAnchor="end" fontStyle="italic">urgency →</SvgText>
+          <SvgText x={4} y={6} fontSize={8.5 * fontSizeMultiplier} fill={tokens.textGhost} fontStyle="italic">importance ↑</SvgText>
         </Svg>
       );
     }
@@ -216,10 +165,10 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
         <Line x1={0} y1={svgH / 2} x2={svgW} y2={svgH / 2} stroke={tokens.axisLine} strokeWidth={1} />
         <Line x1={svgW / 2} y1={0} x2={svgW / 2} y2={svgH} stroke={tokens.axisLine} strokeWidth={1} />
         {/* Watermarks — near axis center */}
-        <SvgText x={svgW / 2 - 4} y={svgH / 2 - 6} fontSize={7.5} fill={tokens.q2} opacity={0.38} fontStyle="italic" textAnchor="end">Schedule</SvgText>
-        <SvgText x={svgW / 2 + 4} y={svgH / 2 - 6} fontSize={7.5} fill={tokens.q1} opacity={0.38} fontStyle="italic">Do Now</SvgText>
-        <SvgText x={svgW / 2 - 4} y={svgH / 2 + 12} fontSize={7.5} fill={tokens.q4} opacity={0.38} fontStyle="italic" textAnchor="end">Eliminate</SvgText>
-        <SvgText x={svgW / 2 + 4} y={svgH / 2 + 12} fontSize={7.5} fill={tokens.q3} opacity={0.38} fontStyle="italic">Delegate</SvgText>
+        <SvgText x={svgW / 2 - 4} y={svgH / 2 - 6} fontSize={9.5 * fontSizeMultiplier} fill={tokens.q2} opacity={0.38} fontStyle="italic" textAnchor="end">Schedule</SvgText>
+        <SvgText x={svgW / 2 + 4} y={svgH / 2 - 6} fontSize={9.5 * fontSizeMultiplier} fill={tokens.q1} opacity={0.38} fontStyle="italic">Do Now</SvgText>
+        <SvgText x={svgW / 2 - 4} y={svgH / 2 + 14} fontSize={9.5 * fontSizeMultiplier} fill={tokens.q4} opacity={0.38} fontStyle="italic" textAnchor="end">Eliminate</SvgText>
+        <SvgText x={svgW / 2 + 4} y={svgH / 2 + 14} fontSize={9.5 * fontSizeMultiplier} fill={tokens.q3} opacity={0.38} fontStyle="italic">Delegate</SvgText>
       </Svg>
     );
   };
@@ -267,14 +216,9 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
       </View>
 
       {/* Matrix Canvas */}
-      <View ref={canvasRef} style={[s.canvas, { overflow: 'hidden' }]} onLayout={onLayout} {...canvasPan.panHandlers}>
-        <TouchableWithoutFeedback onPress={zoom === 1 ? handleCanvasTap : undefined}>
-          <Animated.View
-            style={{
-              flex: 1,
-              transform: [{ scale: zoom }, { translateX: panX }, { translateY: panY }],
-            }}
-          >
+      <View ref={canvasRef} style={s.canvas} onLayout={onLayout}>
+        <TouchableWithoutFeedback onPress={handleCanvasTap}>
+          <View style={{ flex: 1 }}>
             {renderBackground()}
 
             {innerW > 0 && activeAgendas.map(agenda => (
@@ -291,10 +235,6 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
               />
             ))}
 
-            <TouchableOpacity style={s.sparksBtn} onPress={() => nav.openPanel('sparks')}>
-              <Text style={{ fontSize: 16, color: tokens.goldLight, opacity: 0.6 }}>✦</Text>
-            </TouchableOpacity>
-
             {q1Count > 5 && (
               <View style={s.q1Warning}>
                 <Text style={{ fontFamily: fonts.serifItalic, fontSize: 6.5, color: tokens.q1 }}>
@@ -302,18 +242,8 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
                 </Text>
               </View>
             )}
-          </Animated.View>
+          </View>
         </TouchableWithoutFeedback>
-
-        {/* Zoom controls — always above canvas content */}
-        <View style={s.zoomControls} pointerEvents="box-none">
-          <TouchableOpacity style={s.zoomBtn} onPress={handleZoomIn} disabled={zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}>
-            <Text style={[s.zoomBtnText, { opacity: zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1] ? 0.3 : 1 }]}>+</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.zoomBtn} onPress={handleZoomOut} disabled={zoom === 1}>
-            <Text style={[s.zoomBtnText, { opacity: zoom === 1 ? 0.3 : 1 }]}>−</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </View>
   );

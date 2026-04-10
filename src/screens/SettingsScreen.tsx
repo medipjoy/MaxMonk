@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform, Share } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line } from 'react-native-svg';
 import { useClearDayStore } from '../clearday/store';
@@ -14,6 +14,7 @@ interface Props {
   themeMode: ThemeMode;
   matrixStyle: MatrixStyle;
   mitResetHour: number;
+  vaultRetentionDays: number;
 }
 
 function OptionSelector<T extends string>({ options, value, onChange, tokens, fonts }: { options: T[]; value: T; onChange: (v: T) => void; tokens: ThemeTokens; fonts: any }) {
@@ -51,11 +52,11 @@ const FONT_SIZE_OPTIONS: { label: string; value: number }[] = [
   { label: 'XL', value: 1.3 },
 ];
 
-export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mitResetHour }: Props) {
+export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mitResetHour, vaultRetentionDays }: Props) {
   const insets = useSafeAreaInsets();
   const fonts = getFontSet(fontChoice as any);
   const nav = useContext(NavCtx);
-  const { config, setThemeMode, setTags } = useClearDayStore();
+  const { config, setThemeMode, setTags, setVaultRetentionDays } = useClearDayStore();
   const store = useClearDayStore();
 
   // Proxy setters via store (we add these to action functions)
@@ -82,6 +83,59 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
 
   const currentFontSize = config.fontSizeMultiplier ?? 1.0;
   const fontSizeMultiplier = currentFontSize;
+
+  const { agendas, vault } = useClearDayStore();
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const tsToISO = (ts?: number) => ts ? new Date(ts).toISOString() : '';
+      const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+
+      const header = ['id', 'text', 'quadrant', 'domain', 'effort', 'status', 'cx', 'cy',
+        'createdAt', 'doneAt', 'onHoldAt', 'archivedAt'];
+
+      const rows: string[][] = [];
+      for (const a of agendas) {
+        rows.push([
+          a.id, a.text, a.quadrant, a.domain, a.time, a.status,
+          a.cx.toFixed(4), a.cy.toFixed(4),
+          tsToISO(a.createdAt), tsToISO(a.doneAt), tsToISO(a.onHoldAt), '',
+        ]);
+      }
+      for (const v of vault) {
+        rows.push([
+          v.id, v.text, v.quadrant, v.domain, v.time, 'archived',
+          v.cx.toFixed(4), v.cy.toFixed(4),
+          tsToISO(v.createdAt), tsToISO(v.doneAt), tsToISO(v.onHoldAt), tsToISO(v.archivedAt),
+        ]);
+      }
+
+      const csv = [header, ...rows]
+        .map(row => row.map((cell, i) => (i === 1 || i === 3 ? escape(String(cell)) : String(cell))).join(','))
+        .join('\n');
+
+      const filename = `maxmonk-export-${new Date().toISOString().slice(0, 10)}.csv`;
+
+      if (Platform.OS === 'web') {
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        nav.showToast('Exported');
+      } else {
+        await Share.share({ message: csv, title: filename });
+      }
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const TAGLINE = `Most people confuse being busy with being productive. The Eisenhower Matrix changes that. By sorting tasks into four clear quadrants, you stop reacting to noise and start investing your time where it genuinely creates impact and drives meaning.`;
 
@@ -147,7 +201,7 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
 
         {/* Font Size */}
         <View style={s.fontSizeRow}>
-          <Text style={s.fontSizeLabel}>Font Size</Text>
+          <Text style={s.fontSizeLabel}>Size</Text>
           <View style={s.fontSizeBtns}>
             {FONT_SIZE_OPTIONS.map(({ label, value }) => {
               const active = Math.abs((currentFontSize) - value) < 0.01;
@@ -176,6 +230,41 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
           <Text style={s.rowValue}>{HOUR_LABEL(mitResetHour)}</Text>
         </View>
         <Text style={s.helpText}>MIT = Most Important Task. Your top agenda wins the day.</Text>
+
+        {/* Archive */}
+        <Text style={s.sectionLabel}>Archive</Text>
+        <View style={s.row}>
+          <Text style={s.rowLabel}>Auto-clears after</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {([7, 14, 30, 60, 0] as const).map(days => {
+              const active = vaultRetentionDays === days;
+              const label = days === 0 ? 'Never' : `${days}d`;
+              return (
+                <TouchableOpacity key={days} onPress={() => setVaultRetentionDays(days)}>
+                  <Text style={{
+                    fontFamily: fonts.serif,
+                    fontSize: fontScale(12, fontSizeMultiplier),
+                    color: active ? tokens.text : tokens.textGhost,
+                    borderBottomWidth: active ? 1 : 0,
+                    borderBottomColor: tokens.text,
+                    paddingBottom: active ? 1 : 0,
+                  }}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+        <Text style={s.helpText}>Archived agendas older than this are permanently deleted on next launch.</Text>
+
+        {/* Data */}
+        <Text style={s.sectionLabel}>Data</Text>
+        <TouchableOpacity style={s.row} onPress={handleExport} disabled={exporting}>
+          <Text style={s.rowLabel}>Export to CSV</Text>
+          <Text style={[s.rowValue, { color: exporting ? tokens.textGhost : tokens.accent }]}>
+            {exporting ? 'Exporting…' : `${agendas.length + vault.length} agendas ↓`}
+          </Text>
+        </TouchableOpacity>
+        <Text style={s.helpText}>Exports all agendas.</Text>
 
         {/* Clarity footer */}
         <Text style={s.sectionLabel}>Clarity</Text>

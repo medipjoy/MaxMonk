@@ -34,7 +34,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
   const fonts = getFontSet(fontChoice as any);
   const insets = useSafeAreaInsets();
   const nav = useContext(NavCtx);
-  const { config, agendas, mit, addAgenda, updateAgenda, removeSpark, completeAgenda, toggleHold, archiveAgenda } = useClearDayStore();
+  const { config, agendas, mit, addAgenda, updateAgenda, completeAgenda, toggleHold, archiveAgenda } = useClearDayStore();
   const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
 
   const existingAgenda = agendaId ? agendas.find(a => a.id === agendaId) : null;
@@ -80,14 +80,12 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
     const timeVal = EFFORT_TIME[effort] as any;
     if (existingAgenda) {
       await updateAgenda(existingAgenda.id, { text: title.trim(), domain: selectedTag, time: timeVal, cx, cy });
-      if (preset?.sparkId) await removeSpark(preset.sparkId);
       onSave('Updated');
     } else {
       const agenda = await addAgenda({ text: title.trim(), domain: selectedTag, time: timeVal, urgency, importance });
       if (isMIT && agenda) {
         await useClearDayStore.getState().setMit(agenda.text);
       }
-      if (preset?.sparkId) await removeSpark(preset.sparkId);
       onSave('Added to ' + Q_LABEL[quadrant]);
     }
   };

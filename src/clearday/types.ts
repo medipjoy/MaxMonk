@@ -35,12 +35,6 @@ export interface VaultEntry extends Agenda {
   archivedAt: number;
 }
 
-export interface Spark {
-  id: string;
-  text: string;
-  createdAt: number;
-}
-
 export interface AppConfig {
   name: string;
   migratedV1: boolean;
@@ -53,21 +47,7 @@ export interface AppConfig {
   matrixStyle: MatrixStyle;          // default: 'tinted'
   mitResetHour: number;              // default: 0  (midnight, 0–23)
   fontSizeMultiplier: number;        // default: 1.0, range: 0.85–1.3
-}
-
-export interface SparkSuggestion {
-  quadrant: Quadrant;
-  reason: string;
-  domain: AgendaDomain;
-  refined: string;
-  time: AgendaTime;
-  urgency: number;
-  importance: number;
-}
-
-export interface PulseInsight {
-  title: string;
-  lines: string[];
+  vaultRetentionDays: number;        // default: 30; 0 = never auto-delete
 }
 
 export const QUADRANT_META: Record<Quadrant, { label: string; color: string; soft: string }> = {

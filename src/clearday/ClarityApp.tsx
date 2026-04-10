@@ -18,23 +18,21 @@ import { ActiveScreen } from '../screens/ActiveScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { HoldScreen } from '../screens/HoldScreen';
 import { VaultScreen } from '../screens/VaultScreen';
-import { ReflectionScreen } from '../screens/ReflectionScreen';
 import { CompletedScreen } from '../screens/CompletedScreen';
 
 // Panels / sheets
 import { AddEditSheet } from '../components/AddEditSheet';
 import { BubbleActionSheet } from '../components/BubbleActionSheet';
-import { SparksSheet } from '../components/SparksSheet';
 import { MoreSheet } from '../components/MoreSheet';
 import { MITSelector } from '../components/MITSelector';
 import { MITCarryForwardModal } from '../components/MITCarryForwardModal';
 import { Toast } from '../components/Toast';
 
 // Navigation types
-export type Screen = 'matrix' | 'active' | 'hold' | 'vault' | 'reflect' | 'settings' | 'completed';
-export type Panel = 'add' | 'edit' | 'sparks' | 'more' | 'mitSelector' | 'bubbleAction' | null;
+export type Screen = 'matrix' | 'active' | 'hold' | 'vault' | 'settings' | 'completed';
+export type Panel = 'add' | 'edit' | 'more' | 'mitSelector' | 'bubbleAction' | null;
 
-export interface AddSheetPreset { urgency: number; importance: number; defaultDomain?: string; defaultText?: string; sparkId?: string; }
+export interface AddSheetPreset { urgency: number; importance: number; defaultDomain?: string; defaultText?: string; }
 export interface BubbleActionTarget { agendaId: string }
 
 interface ClarityAppProps {
@@ -80,6 +78,12 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
   const pillTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => { bootstrap(); }, []);
+
+  // Show pill briefly when app first loads
+  useEffect(() => {
+    if (!ready) return;
+    showPill();
+  }, [ready]);
 
   // MIT carry-forward check
   useEffect(() => {
@@ -129,6 +133,7 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
   const tokens = resolveTheme(config.themeMode, null);
   const { width } = Dimensions.get('window');
   const isWide = width >= 768;
+  const fsm = config.fontSizeMultiplier ?? 1.0;
 
   // Pill show/hide
   const showPill = () => {
@@ -166,8 +171,7 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
       case 'active': return <ActiveScreen tokens={tokens} fontChoice={config.fontChoice} />;
       case 'hold': return <HoldScreen tokens={tokens} fontChoice={config.fontChoice} />;
       case 'vault': return <VaultScreen tokens={tokens} fontChoice={config.fontChoice} />;
-      case 'reflect': return <ReflectionScreen tokens={tokens} fontChoice={config.fontChoice} />;
-      case 'settings': return <SettingsScreen tokens={tokens} fontChoice={config.fontChoice} themeMode={config.themeMode} matrixStyle={config.matrixStyle} mitResetHour={config.mitResetHour} />;
+      case 'settings': return <SettingsScreen tokens={tokens} fontChoice={config.fontChoice} themeMode={config.themeMode} matrixStyle={config.matrixStyle} mitResetHour={config.mitResetHour} vaultRetentionDays={config.vaultRetentionDays ?? 30} />;
       case 'completed': return <CompletedScreen tokens={tokens} fontChoice={config.fontChoice} />;
       default: return (
         <MatrixScreen tokens={tokens} fontChoice={config.fontChoice} matrixStyle={config.matrixStyle} onPillToggle={togglePill} />
@@ -189,10 +193,10 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
       backgroundColor: tokens.bg === '#F8F7F4' ? 'rgba(248,246,242,0.94)' : 'rgba(9,11,17,0.92)',
       borderWidth: tokens.bg === '#F8F7F4' ? 0.5 : 1,
       borderColor: tokens.bg === '#F8F7F4' ? 'rgba(0,0,0,0.13)' : 'rgba(255,255,255,0.08)',
-      borderRadius: 28,
-      paddingVertical: 9,
-      paddingHorizontal: 20,
-      gap: 20,
+      borderRadius: Math.round(28 * fsm),
+      paddingVertical: Math.round(9 * fsm),
+      paddingHorizontal: Math.round(20 * fsm),
+      gap: Math.round(20 * fsm),
     },
   });
 
@@ -214,7 +218,7 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
                 onMouseEnter={Platform.OS === 'web' ? showPill : undefined}
                 onMouseLeave={Platform.OS === 'web' ? () => { if (pillTimer.current) clearTimeout(pillTimer.current); setPillVisible(false); } : undefined}
               >
-                <PillIcons screen={screen} tokens={tokens} goTo={goTo} openPanel={openPanel} />
+                <PillIcons screen={screen} tokens={tokens} goTo={goTo} openPanel={openPanel} fsm={fsm} />
               </View>
             )}
           </>
@@ -224,7 +228,6 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
         {panel === 'more' && <MoreSheet tokens={tokens} fontChoice={config.fontChoice} />}
         {panel === 'mitSelector' && <MITSelector tokens={tokens} fontChoice={config.fontChoice} currentMit={mit} onSelect={(t) => { setMit(t); closePanel(); showToast(t ? 'MIT set' : 'MIT cleared'); }} onClose={closePanel} />}
         {(panel === 'add' || panel === 'edit') && <AddEditSheet tokens={tokens} fontChoice={config.fontChoice} agendaId={editAgendaId} preset={addSheetPreset} onClose={closePanel} onSave={(msg) => { closePanel(); showToast(msg); }} />}
-        {panel === 'sparks' && <SparksSheet tokens={tokens} fontChoice={config.fontChoice} onClose={closePanel} />}
         {panel === 'bubbleAction' && bubbleActionId && <BubbleActionSheet tokens={tokens} fontChoice={config.fontChoice} agendaId={bubbleActionId} onClose={closePanel} onAction={(msg) => { closePanel(); showToast(msg); }} onEdit={(id) => { setEditAgendaId(id); setPanel('edit'); }} />}
 
         {/* MIT carry-forward modal */}
@@ -245,39 +248,42 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
 }
 
 // --- Floating Pill Icons ---
-function PillIcons({ screen, tokens, goTo, openPanel }: { screen: Screen; tokens: any; goTo: (s: Screen) => void; openPanel: (p: Panel) => void }) {
+function PillIcons({ screen, tokens, goTo, openPanel, fsm }: { screen: Screen; tokens: any; goTo: (s: Screen) => void; openPanel: (p: Panel) => void; fsm: number }) {
   const isMatrix = screen === 'matrix';
   const isActive = screen === 'active';
 
   const iconColor = (active: boolean) => active ? tokens.accent : tokens.textGhost;
   const indicatorColor = tokens.accent;
+  const iconSize = Math.round(16 * fsm);
 
   return (
     <>
       {/* Crosshair — Matrix */}
-      <PillButton onPress={() => goTo('matrix')} active={isMatrix} indicatorColor={indicatorColor}>
-        <CrosshairIcon color={iconColor(isMatrix)} size={16} />
+      <PillButton onPress={() => goTo('matrix')} active={isMatrix} indicatorColor={indicatorColor} fsm={fsm}>
+        <CrosshairIcon color={iconColor(isMatrix)} size={iconSize} />
       </PillButton>
 
       {/* List — Active */}
-      <PillButton onPress={() => goTo('active')} active={isActive} indicatorColor={indicatorColor}>
-        <ListIcon color={iconColor(isActive)} size={16} />
+      <PillButton onPress={() => goTo('active')} active={isActive} indicatorColor={indicatorColor} fsm={fsm}>
+        <ListIcon color={iconColor(isActive)} size={iconSize} />
       </PillButton>
 
       {/* Dots — More */}
-      <PillButton onPress={() => openPanel('more')} active={false} indicatorColor={indicatorColor}>
-        <DotsIcon color={iconColor(false)} size={16} />
+      <PillButton onPress={() => openPanel('more')} active={false} indicatorColor={indicatorColor} fsm={fsm}>
+        <DotsIcon color={iconColor(false)} size={iconSize} />
       </PillButton>
     </>
   );
 }
 
-function PillButton({ onPress, active, indicatorColor, children }: { onPress: () => void; active: boolean; indicatorColor: string; children: React.ReactNode }) {
+function PillButton({ onPress, active, indicatorColor, fsm, children }: { onPress: () => void; active: boolean; indicatorColor: string; fsm: number; children: React.ReactNode }) {
+  const btnSize = Math.round(28 * fsm);
+  const dotW = Math.round(16 * fsm);
   return (
     <TouchableWithoutFeedback onPress={onPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-      <View style={{ width: 28, height: 28, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ width: btnSize, height: btnSize, justifyContent: 'center', alignItems: 'center' }}>
         {active && (
-          <View style={{ position: 'absolute', top: -2, width: 16, height: 2, backgroundColor: indicatorColor, borderRadius: 1 }} />
+          <View style={{ position: 'absolute', top: -2, width: dotW, height: 2, backgroundColor: indicatorColor, borderRadius: 1 }} />
         )}
         {children}
       </View>
