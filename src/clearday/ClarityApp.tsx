@@ -179,6 +179,8 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
     }
   };
 
+  const pillAppearance = getPillAppearance(config.matrixStyle, tokens);
+
   const s = StyleSheet.create({
     root: { flex: 1, backgroundColor: tokens.bg },
     wide: { flex: 1, flexDirection: 'row' },
@@ -190,9 +192,9 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
       alignSelf: 'center',
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: tokens.bg === '#F8F7F4' ? 'rgba(248,246,242,0.94)' : 'rgba(9,11,17,0.92)',
-      borderWidth: tokens.bg === '#F8F7F4' ? 0.5 : 1,
-      borderColor: tokens.bg === '#F8F7F4' ? 'rgba(0,0,0,0.13)' : 'rgba(255,255,255,0.08)',
+      backgroundColor: pillAppearance.bg,
+      borderWidth: pillAppearance.borderWidth,
+      borderColor: pillAppearance.borderColor,
       borderRadius: Math.round(28 * fsm),
       paddingVertical: Math.round(9 * fsm),
       paddingHorizontal: Math.round(20 * fsm),
@@ -368,6 +370,30 @@ function Sidebar({ tokens, fontChoice, screen, goTo, openPanel }: { tokens: any;
   );
 }
 
+function getPillAppearance(matrixStyle: string, tokens: any): { bg: string; borderWidth: number; borderColor: string } {
+  const isDark = tokens.bg === '#0C0E14';
+  if (matrixStyle === 'editorial') {
+    return {
+      bg: isDark ? 'rgba(12,14,20,0.97)' : 'rgba(248,247,244,0.97)',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(232,234,240,0.10)' : 'rgba(26,24,20,0.10)',
+    };
+  }
+  if (matrixStyle === 'paper') {
+    return {
+      bg: isDark ? 'rgba(26,29,43,0.96)' : 'rgba(254,252,248,0.96)',
+      borderWidth: 0.5,
+      borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)',
+    };
+  }
+  // tinted (default)
+  return {
+    bg: isDark ? 'rgba(19,22,32,0.93)' : 'rgba(255,255,255,0.93)',
+    borderWidth: 0.75,
+    borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+  };
+}
+
 // Inline SVG icons using react-native-svg
 import Svg, { Line, Circle, Rect } from 'react-native-svg';
 
@@ -375,8 +401,8 @@ function CrosshairIcon({ color, size }: { color: string; size: number }) {
   const c = size / 2;
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <Line x1={0} y1={c} x2={size} y2={c} stroke={color} strokeWidth={1.5} />
-      <Line x1={c} y1={0} x2={c} y2={size} stroke={color} strokeWidth={1.5} />
+      <Line x1={0} y1={c} x2={size} y2={c} stroke={color} strokeWidth={1.75} />
+      <Line x1={c} y1={0} x2={c} y2={size} stroke={color} strokeWidth={1.75} />
     </Svg>
   );
 }
@@ -385,9 +411,9 @@ function ListIcon({ color, size }: { color: string; size: number }) {
   const gap = size / 4;
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <Line x1={gap} y1={gap} x2={size - gap} y2={gap} stroke={color} strokeWidth={1.5} strokeLinecap="round" />
-      <Line x1={gap} y1={size / 2} x2={size - gap} y2={size / 2} stroke={color} strokeWidth={1.5} strokeLinecap="round" />
-      <Line x1={gap} y1={size - gap} x2={size - gap} y2={size - gap} stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <Line x1={gap} y1={gap} x2={size - gap} y2={gap} stroke={color} strokeWidth={1.75} strokeLinecap="round" />
+      <Line x1={gap} y1={size / 2} x2={size - gap} y2={size / 2} stroke={color} strokeWidth={1.75} strokeLinecap="round" />
+      <Line x1={gap} y1={size - gap} x2={size - gap} y2={size - gap} stroke={color} strokeWidth={1.75} strokeLinecap="round" />
     </Svg>
   );
 }

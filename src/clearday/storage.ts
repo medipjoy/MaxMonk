@@ -56,13 +56,13 @@ export async function loadConfig(): Promise<AppConfig> {
     themeMode: 'light',
     vaultExpiryDefault: 'on_60d',
     holdExpiryDefault: 'off',
-    tags: [...DEFAULT_TAGS],
+    tags: ['Pro', 'Per'],
     quadrantLabels: { ...DEFAULT_QUADRANT_LABELS },
     fontChoice: 'cormorant',
     matrixStyle: 'tinted',
     mitResetHour: 0,
     fontSizeMultiplier: 1.0,
-    vaultRetentionDays: 30,
+    vaultRetentionDays: 0,
   });
 }
 

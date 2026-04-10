@@ -1,5 +1,5 @@
-import React, { useContext, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform, Share } from 'react-native';
+import React, { useContext, useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform, Share, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line } from 'react-native-svg';
 import { useClearDayStore } from '../clearday/store';
@@ -56,7 +56,7 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
   const insets = useSafeAreaInsets();
   const fonts = getFontSet(fontChoice as any);
   const nav = useContext(NavCtx);
-  const { config, setThemeMode, setTags, setVaultRetentionDays } = useClearDayStore();
+  const { config, setThemeMode, setTags, setVaultRetentionDays, addTag, removeTag, renameTag } = useClearDayStore();
   const store = useClearDayStore();
 
   // Proxy setters via store (we add these to action functions)
@@ -86,6 +86,47 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
 
   const { agendas, vault } = useClearDayStore();
   const [exporting, setExporting] = useState(false);
+
+  // Tag editing state
+  const [editingTagIdx, setEditingTagIdx] = useState<number | null>(null);
+  const [editingTagValue, setEditingTagValue] = useState('');
+  const [addingTag, setAddingTag] = useState(false);
+  const [addingTagValue, setAddingTagValue] = useState('');
+  const addInputRef = useRef<TextInput>(null);
+
+  const tags = config.tags ?? ['Pro', 'Per'];
+
+  const capFirst = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+
+  const handleTagChange = (v: string) => {
+    setEditingTagValue(capFirst(v.slice(0, 3)));
+  };
+
+  const handleTagBlur = async (oldTag: string) => {
+    const val = editingTagValue.trim();
+    if (val && val !== oldTag) {
+      await renameTag(oldTag, val);
+    }
+    setEditingTagIdx(null);
+    setEditingTagValue('');
+  };
+
+  const handleAddChange = (v: string) => {
+    setAddingTagValue(capFirst(v.slice(0, 3)));
+  };
+
+  const handleAddBlur = async () => {
+    const val = addingTagValue.trim();
+    if (val) await addTag(val);
+    setAddingTag(false);
+    setAddingTagValue('');
+  };
+
+  const startAddTag = () => {
+    setAddingTag(true);
+    setAddingTagValue('');
+    setTimeout(() => addInputRef.current?.focus(), 50);
+  };
 
   const handleExport = async () => {
     setExporting(true);
@@ -231,12 +272,65 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
         </View>
         <Text style={s.helpText}>MIT = Most Important Task. Your top agenda wins the day.</Text>
 
+        {/* Agenda Tags */}
+        <Text style={s.sectionLabel}>Agenda Tags</Text>
+        {tags.map((tag, idx) => (
+          <View key={tag} style={s.row}>
+            {editingTagIdx === idx ? (
+              <TextInput
+                autoFocus
+                value={editingTagValue}
+                onChangeText={handleTagChange}
+                onBlur={() => handleTagBlur(tag)}
+                onSubmitEditing={() => handleTagBlur(tag)}
+                maxLength={3}
+                style={[s.rowLabel, { flex: 1, padding: 0, borderBottomWidth: 1, borderBottomColor: tokens.accent }]}
+                selectionColor={tokens.accent}
+                returnKeyType="done"
+              />
+            ) : (
+              <TouchableOpacity onPress={() => { setEditingTagIdx(idx); setEditingTagValue(tag); }} style={{ flex: 1 }}>
+                <Text style={s.rowLabel}>{tag}</Text>
+              </TouchableOpacity>
+            )}
+            {tags.length > 1 && (
+              <TouchableOpacity onPress={() => removeTag(tag)} hitSlop={{ top: 8, bottom: 8, left: 12, right: 4 }}>
+                <Text style={{ fontFamily: fonts.serif, fontSize: fontScale(14, fontSizeMultiplier), color: tokens.textGhost, marginLeft: 12 }}>×</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ))}
+        {tags.length < 4 && (
+          addingTag ? (
+            <View style={s.row}>
+              <TextInput
+                ref={addInputRef}
+                value={addingTagValue}
+                onChangeText={handleAddChange}
+                onBlur={handleAddBlur}
+                onSubmitEditing={handleAddBlur}
+                maxLength={3}
+                placeholder="Tag"
+                placeholderTextColor={tokens.textGhost}
+                style={[s.rowLabel, { flex: 1, padding: 0, borderBottomWidth: 1, borderBottomColor: tokens.accent }]}
+                selectionColor={tokens.accent}
+                returnKeyType="done"
+              />
+            </View>
+          ) : (
+            <TouchableOpacity style={s.row} onPress={startAddTag}>
+              <Text style={[s.rowLabel, { color: tokens.textGhost }]}>+ Add tag</Text>
+            </TouchableOpacity>
+          )
+        )}
+        <Text style={s.helpText}>Short codes only — e.g. Per personal, Lrn learning, Wk work, Hlt health.</Text>
+
         {/* Archive */}
         <Text style={s.sectionLabel}>Archive</Text>
         <View style={s.row}>
-          <Text style={s.rowLabel}>Auto-clears after</Text>
+          <Text style={s.rowLabel}>Delete after</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            {([7, 14, 30, 60, 0] as const).map(days => {
+            {([15, 60, 0] as const).map(days => {
               const active = vaultRetentionDays === days;
               const label = days === 0 ? 'Never' : `${days}d`;
               return (

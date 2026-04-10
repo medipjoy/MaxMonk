@@ -106,12 +106,17 @@ function applyVaultRetentionPolicy(vault: VaultEntry[], retentionDays: number): 
   return vault.filter((e) => expiryDaysPassed(e.archivedAt) < retentionDays);
 }
 
+function capFirst(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 function normalizeTagList(input: string[]): string[] {
   const next: string[] = [];
   input.forEach((tag) => {
-    const clean = tag.trim();
-    if (!clean) return;
-    if (clean.length > TAG_MAX_LENGTH) return;
+    const raw = tag.trim();
+    if (!raw) return;
+    const clean = capFirst(raw.slice(0, TAG_MAX_LENGTH));
     if (next.some((v) => v.toLowerCase() === clean.toLowerCase())) return;
     if (next.length >= 4) return;
     next.push(clean);
@@ -135,8 +140,10 @@ function resolveTag(value: string | undefined, tags: string[]): string {
   if (!value) return tags[0];
   const found = tags.find((t) => t.toLowerCase() === value.trim().toLowerCase());
   if (found) return found;
-  if (value === 'professional') return tags[0] || 'Professional';
-  if (value === 'personal') return tags[1] || tags[0] || 'Personal';
+  // Legacy: full-word tags stored before 3-char migration — try truncated match
+  const truncated = capFirst(value.trim().slice(0, TAG_MAX_LENGTH));
+  const foundTrunc = tags.find((t) => t.toLowerCase() === truncated.toLowerCase());
+  if (foundTrunc) return foundTrunc;
   return tags[0];
 }
 
@@ -157,7 +164,7 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     matrixStyle: 'tinted',
     mitResetHour: 0,
     fontSizeMultiplier: 1.0,
-    vaultRetentionDays: 30,
+    vaultRetentionDays: 0,
   },
 
   bootstrap: async () => {
@@ -181,7 +188,7 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
       matrixStyle: rawConfig.matrixStyle || 'tinted',
       mitResetHour: rawConfig.mitResetHour ?? 0,
       fontSizeMultiplier: rawConfig.fontSizeMultiplier ?? 1.0,
-      vaultRetentionDays: rawConfig.vaultRetentionDays ?? 30,
+      vaultRetentionDays: rawConfig.vaultRetentionDays ?? 0,
     };
     const normalizedAgendas = loadedAgendas.map((a) => ({ ...a, domain: resolveTag(a.domain, tags) }));
     const normalizedVault = loadedVault.map((v) => ({ ...v, domain: resolveTag(v.domain, tags) }));
@@ -259,8 +266,8 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
   },
 
   addTag: async (tag: string) => {
-    const clean = tag.trim();
-    if (!clean || clean.length > TAG_MAX_LENGTH) return false;
+    const clean = capFirst(tag.trim().slice(0, TAG_MAX_LENGTH));
+    if (!clean) return false;
     const tags = get().config.tags ?? [...DEFAULT_TAGS];
     if (tags.length >= 4) return false;
     if (tags.some((t) => t.toLowerCase() === clean.toLowerCase())) return false;
@@ -280,8 +287,8 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
 
   renameTag: async (oldTag: string, newTag: string) => {
     const oldClean = oldTag.trim();
-    const newClean = newTag.trim();
-    if (!oldClean || !newClean || newClean.length > TAG_MAX_LENGTH) return false;
+    const newClean = capFirst(newTag.trim().slice(0, TAG_MAX_LENGTH));
+    if (!oldClean || !newClean) return false;
     const tags = get().config.tags ?? [...DEFAULT_TAGS];
     const oldIdx = tags.findIndex((t) => t.toLowerCase() === oldClean.toLowerCase());
     if (oldIdx < 0) return false;

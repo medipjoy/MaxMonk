@@ -6,8 +6,8 @@ export type ThemeMode = 'system' | 'light' | 'dark';
 export type MatrixStyle = 'tinted' | 'editorial' | 'paper';
 export type FontChoice = 'cormorant' | 'baskerville' | 'inter' | 'jakarta';
 export type ExpiryDefault = 'off' | 'on_60d';
-export const DEFAULT_TAGS = ['Professional', 'Personal'] as const;
-export const TAG_MAX_LENGTH = 12;
+export const DEFAULT_TAGS = ['Pro', 'Per'] as const;
+export const TAG_MAX_LENGTH = 3;
 export const AGENDA_TITLE_MAX_LENGTH = 80;
 export const QUADRANT_LABEL_MAX_LENGTH = 12;
 export const DEFAULT_QUADRANT_LABELS: Record<Quadrant, string> = {
@@ -47,7 +47,7 @@ export interface AppConfig {
   matrixStyle: MatrixStyle;          // default: 'tinted'
   mitResetHour: number;              // default: 0  (midnight, 0–23)
   fontSizeMultiplier: number;        // default: 1.0, range: 0.85–1.3
-  vaultRetentionDays: number;        // default: 30; 0 = never auto-delete
+  vaultRetentionDays: number;        // default: 0; 0 = never auto-delete
 }
 
 export const QUADRANT_META: Record<Quadrant, { label: string; color: string; soft: string }> = {
