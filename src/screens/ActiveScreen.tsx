@@ -7,6 +7,7 @@ import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
 import { fontScale } from '../clearday/scale';
 import { NavCtx } from '../clearday/ClarityApp';
+import { ReorderHandle } from '../components/ReorderHandle';
 
 interface Props { tokens: ThemeTokens; fontChoice: string; }
 
@@ -21,12 +22,15 @@ export function ActiveScreen({ tokens, fontChoice }: Props) {
   const insets = useSafeAreaInsets();
   const fonts = getFontSet(fontChoice as any);
   const nav = useContext(NavCtx);
-  const { agendas, toggleHold, archiveAgenda, completeAgenda } = useClearDayStore();
+  const { agendas, toggleHold, archiveAgenda, completeAgenda, reorderActiveAgenda } = useClearDayStore();
   const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
 
   const active = agendas.filter(a => a.status === 'active');
   const grouped: Record<string, typeof active> = {};
-  Q_ORDER.forEach(q => { grouped[q] = active.filter(a => a.quadrant === q); });
+  Q_ORDER.forEach(q => {
+    grouped[q] = [...active.filter(a => a.quadrant === q)]
+      .sort((a, b) => (a.listOrder ?? 0) - (b.listOrder ?? 0) || a.createdAt - b.createdAt);
+  });
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top },
@@ -103,6 +107,14 @@ export function ActiveScreen({ tokens, fontChoice }: Props) {
                       <TouchableOpacity style={s.rowBtn} onPress={async () => { await archiveAgenda(agenda.id); nav.showToast('Archived'); }}>
                         <Text style={s.rowBtnText}>↓</Text>
                       </TouchableOpacity>
+                      <ReorderHandle
+                        color={tokens.textGhost}
+                        onMoveBy={(delta) => {
+                          const currentIndex = items.findIndex((item) => item.id === agenda.id);
+                          if (currentIndex < 0) return;
+                          void reorderActiveAgenda(agenda.id, currentIndex + delta);
+                        }}
+                      />
                     </View>
                   </TouchableOpacity>
                 ))}

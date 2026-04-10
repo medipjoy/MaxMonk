@@ -27,7 +27,7 @@ export function CompletedScreen({ tokens, fontChoice }: Props) {
   const insets = useSafeAreaInsets();
   const fonts = getFontSet(fontChoice as any);
   const nav = useContext(NavCtx);
-  const { agendas } = useClearDayStore();
+  const { agendas, restoreCompletedAgenda, archiveAgenda } = useClearDayStore();
   const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
 
   const completed = agendas.filter(a => a.status === 'done');
@@ -42,10 +42,13 @@ export function CompletedScreen({ tokens, fontChoice }: Props) {
     scroll: { flex: 1 },
     sectionHeader: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
     sectionLabel: { fontFamily: fonts.sansMedium, fontSize: fontScale(7.5, fontSizeMultiplier), color: tokens.textGhost, textTransform: 'uppercase', letterSpacing: 0.1 * fontScale(7.5, fontSizeMultiplier) },
-    row: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: tokens.border },
+    row: { minHeight: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: tokens.border },
     dot: { width: 4, height: 4, borderRadius: 2, marginRight: 12 },
     rowText: { flex: 1, fontFamily: fonts.serif, fontSize: fontScale(12, fontSizeMultiplier), color: tokens.textMuted },
     rowMeta: { fontFamily: fonts.serif, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.textGhost, marginLeft: 8 },
+    rowBtns: { flexDirection: 'row', alignItems: 'center' },
+    rowBtn: { width: 32, height: 32, justifyContent: 'center', alignItems: 'center' },
+    rowBtnText: { fontSize: fontScale(14, fontSizeMultiplier), color: tokens.textMuted },
     empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyText: { fontFamily: fonts.serifItalic, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.textGhost },
   });
@@ -75,11 +78,26 @@ export function CompletedScreen({ tokens, fontChoice }: Props) {
                   <Text style={[s.sectionLabel, { color: qColor(q, tokens) }]}>{Q_LABEL[q]}</Text>
                 </View>
                 {items.map(agenda => (
-                  <View key={agenda.id} style={s.row}>
+                  <TouchableOpacity
+                    key={agenda.id}
+                    style={s.row}
+                    onPress={() => { nav.setEditAgendaId(agenda.id); nav.openPanel('edit'); }}
+                  >
                     <View style={[s.dot, { backgroundColor: qColor(q, tokens) }]} />
                     <Text style={s.rowText} numberOfLines={1}>{agenda.text}</Text>
                     <Text style={s.rowMeta}>{agenda.domain} · {formatMonth(agenda.doneAt)}</Text>
-                  </View>
+                    <View style={s.rowBtns}>
+                      <TouchableOpacity style={s.rowBtn} onPress={async () => { await restoreCompletedAgenda(agenda.id); nav.showToast('Back to Active'); }}>
+                        <Text style={[s.rowBtnText, { color: tokens.accent, fontSize: fontScale(16.1, fontSizeMultiplier) }]}>+</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={s.rowBtn} onPress={() => { nav.setEditAgendaId(agenda.id); nav.openPanel('edit'); }}>
+                        <Text style={s.rowBtnText}>✎</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={s.rowBtn} onPress={async () => { await archiveAgenda(agenda.id); nav.showToast('Archived'); }}>
+                        <Text style={s.rowBtnText}>↓</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             );

@@ -33,9 +33,9 @@ export function Toast({ tokens, fontChoice, message, visible, bottomOffset }: Pr
   return (
     <Animated.View
       style={[styles.container, {
-        backgroundColor: tokens.surface2,
-        borderColor: tokens.borderMid,
-        bottom: 18 + bottomOffset + 48, // above pill
+        backgroundColor: tokens.surface,
+        borderColor: tokens.border,
+        bottom: 24 + bottomOffset + 56,
         opacity,
       }]}
       pointerEvents="none"
@@ -51,11 +51,15 @@ const styles = StyleSheet.create({
   container: {
     position: 'absolute',
     alignSelf: 'center',
-    borderWidth: 0.5,
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    borderWidth: 0.75,
+    borderRadius: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 18,
     maxWidth: 320,
-    width: '80%',
+    width: '78%',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
   },
 });

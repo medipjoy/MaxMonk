@@ -20,6 +20,8 @@ export function VaultScreen({ tokens, fontChoice }: Props) {
   const nav = useContext(NavCtx);
   const { vault, restoreVaultAgenda, restoreVaultToActive, deleteVaultAgenda } = useClearDayStore();
   const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
+  const archivedCompleted = vault.filter((entry) => entry.status === 'done');
+  const archivedOther = vault.filter((entry) => entry.status !== 'done');
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top },
@@ -33,9 +35,29 @@ export function VaultScreen({ tokens, fontChoice }: Props) {
     rowBtns: { flexDirection: 'row' },
     rowBtn: { width: 32, height: 32, justifyContent: 'center', alignItems: 'center' },
     rowBtnText: { fontSize: fontScale(14, fontSizeMultiplier), color: tokens.textMuted },
+    sectionHeader: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+    sectionLabel: { fontFamily: fonts.sansMedium, fontSize: fontScale(7.5, fontSizeMultiplier), color: tokens.textGhost, textTransform: 'uppercase', letterSpacing: 0.1 * fontScale(7.5, fontSizeMultiplier) },
     empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyText: { fontFamily: fonts.serifItalic, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.textGhost },
   });
+
+  const renderRows = (entries: typeof vault) => entries.map((entry) => (
+    <View key={entry.id} style={s.row}>
+      <View style={[s.dot, { backgroundColor: qColor(entry.quadrant, tokens) }]} />
+      <Text style={s.rowText} numberOfLines={1}>{entry.text}</Text>
+      <View style={s.rowBtns}>
+        <TouchableOpacity style={s.rowBtn} onPress={async () => { await restoreVaultToActive(entry.id); nav.goTo('matrix'); nav.showToast('Back on matrix'); }}>
+          <Text style={[s.rowBtnText, { color: tokens.accent, fontSize: fontScale(16.1, fontSizeMultiplier) }]}>+</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.rowBtn} onPress={async () => { await restoreVaultAgenda(entry.id); nav.showToast('To Hold'); }}>
+          <Text style={s.rowBtnText}>↑</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.rowBtn} onPress={async () => { await deleteVaultAgenda(entry.id); nav.showToast('Deleted'); }}>
+          <Text style={[s.rowBtnText, { color: tokens.q1 }]}>✕</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  ));
 
   return (
     <View style={s.container}>
@@ -52,23 +74,22 @@ export function VaultScreen({ tokens, fontChoice }: Props) {
         <View style={s.empty}><Text style={s.emptyText}>The archive is clear.</Text></View>
       ) : (
         <ScrollView style={s.scroll}>
-          {vault.map(entry => (
-            <View key={entry.id} style={s.row}>
-              <View style={[s.dot, { backgroundColor: qColor(entry.quadrant, tokens) }]} />
-              <Text style={s.rowText} numberOfLines={1}>{entry.text}</Text>
-              <View style={s.rowBtns}>
-                <TouchableOpacity style={s.rowBtn} onPress={async () => { await restoreVaultToActive(entry.id); nav.goTo('matrix'); nav.showToast('Back on matrix'); }}>
-                  <Text style={[s.rowBtnText, { color: tokens.accent }]}>+</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.rowBtn} onPress={async () => { await restoreVaultAgenda(entry.id); nav.showToast('To Hold'); }}>
-                  <Text style={s.rowBtnText}>↑</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.rowBtn} onPress={async () => { await deleteVaultAgenda(entry.id); nav.showToast('Deleted'); }}>
-                  <Text style={[s.rowBtnText, { color: tokens.q1 }]}>✕</Text>
-                </TouchableOpacity>
+          {archivedOther.length > 0 && (
+            <>
+              <View style={s.sectionHeader}>
+                <Text style={s.sectionLabel}>Archived</Text>
               </View>
-            </View>
-          ))}
+              {renderRows(archivedOther)}
+            </>
+          )}
+          {archivedCompleted.length > 0 && (
+            <>
+              <View style={s.sectionHeader}>
+                <Text style={s.sectionLabel}>Completed Then Archived</Text>
+              </View>
+              {renderRows(archivedCompleted)}
+            </>
+          )}
         </ScrollView>
       )}
     </View>

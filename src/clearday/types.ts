@@ -24,6 +24,7 @@ export interface Agenda {
   domain: AgendaDomain;
   time: AgendaTime;
   status: AgendaStatus;
+  listOrder?: number;
   cx: number;
   cy: number;
   createdAt: number;

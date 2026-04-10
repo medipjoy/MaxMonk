@@ -19,6 +19,15 @@ const ITEMS: { label: string; screen: Screen }[] = [
   { label: 'Settings', screen: 'settings' },
 ];
 
+const ITEM_ICON: Record<Screen, string> = {
+  matrix: '+',
+  active: '•',
+  completed: '✓',
+  hold: '–',
+  vault: '↓',
+  settings: '⋯',
+};
+
 export function MoreSheet({ tokens, fontChoice }: Props) {
   const fonts = getFontSet(fontChoice as any);
   const insets = useSafeAreaInsets();
@@ -37,6 +46,8 @@ export function MoreSheet({ tokens, fontChoice }: Props) {
     sheet: { backgroundColor: tokens.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: insets.bottom + 8 },
     handle: { width: 36, height: 3, backgroundColor: tokens.border, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 8 },
     row: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: tokens.border, justifyContent: 'space-between' },
+    left: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    icon: { width: 18, fontFamily: fonts.serif, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.textGhost, textAlign: 'center' },
     label: { fontFamily: fonts.serif, fontSize: fontScale(14, fontSizeMultiplier), color: tokens.text },
     arrow: { fontFamily: fonts.serif, fontSize: fontScale(14, fontSizeMultiplier), color: tokens.textGhost },
   });
@@ -49,7 +60,10 @@ export function MoreSheet({ tokens, fontChoice }: Props) {
             <View style={s.handle} {...dismissPan.panHandlers} />
             {ITEMS.map(item => (
               <TouchableOpacity key={item.screen} style={s.row} onPress={() => { nav.closePanel(); nav.goTo(item.screen); }}>
-                <Text style={s.label}>{item.label}</Text>
+                <View style={s.left}>
+                  <Text style={s.icon}>{ITEM_ICON[item.screen]}</Text>
+                  <Text style={s.label}>{item.label}</Text>
+                </View>
                 <Text style={s.arrow}>→</Text>
               </TouchableOpacity>
             ))}

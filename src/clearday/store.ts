@@ -57,6 +57,7 @@ interface ClearDayState {
 
   updateAgendaPosition: (id: string, cx: number, cy: number) => Promise<void>;
   completeAgenda: (id: string) => Promise<void>;
+  restoreCompletedAgenda: (id: string) => Promise<void>;
   toggleHold: (id: string) => Promise<void>;
   setAgendaMit: (id: string) => Promise<void>;
   updateAgenda: (id: string, patch: Partial<Pick<Agenda, 'text' | 'domain' | 'time' | 'cx' | 'cy'>>) => Promise<void>;
@@ -70,6 +71,8 @@ interface ClearDayState {
   bulkHold: (ids: string[]) => Promise<void>;
   bulkResume: (ids: string[]) => Promise<void>;
   bulkDelete: (ids: string[]) => Promise<void>;
+  reorderActiveAgenda: (id: string, nextIndex: number) => Promise<void>;
+  reorderHoldAgenda: (id: string, nextIndex: number) => Promise<void>;
 }
 
 async function persistSnapshot(state: Pick<ClearDayState, 'agendas' | 'vault'>): Promise<void> {
@@ -147,6 +150,69 @@ function resolveTag(value: string | undefined, tags: string[]): string {
   return tags[0];
 }
 
+function clamp(v: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, v));
+}
+
+function sortByListOrder(items: Agenda[]): Agenda[] {
+  return [...items].sort((a, b) => {
+    const aOrder = a.listOrder ?? 0;
+    const bOrder = b.listOrder ?? 0;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return a.createdAt - b.createdAt;
+  });
+}
+
+function assignOrders(items: Agenda[]): Agenda[] {
+  return items.map((agenda, index) => ({ ...agenda, listOrder: index }));
+}
+
+function normalizeAgendaOrders(agendas: Agenda[]): Agenda[] {
+  const next = [...agendas];
+  const updateGroup = (matcher: (agenda: Agenda) => boolean) => {
+    const indexes = next
+      .map((agenda, index) => ({ agenda, index }))
+      .filter(({ agenda }) => matcher(agenda));
+    const sorted = assignOrders(sortByListOrder(indexes.map(({ agenda }) => agenda)));
+    sorted.forEach((agenda, localIndex) => {
+      next[indexes[localIndex].index] = agenda;
+    });
+  };
+
+  (['Q1', 'Q2', 'Q3', 'Q4'] as Quadrant[]).forEach((quadrant) => {
+    updateGroup((agenda) => agenda.status === 'active' && agenda.quadrant === quadrant);
+  });
+  updateGroup((agenda) => agenda.status === 'onhold');
+  updateGroup((agenda) => agenda.status === 'done');
+  return next;
+}
+
+function nextOrderForGroup(agendas: Agenda[], matcher: (agenda: Agenda) => boolean): number {
+  const orders = agendas.filter(matcher).map((agenda) => agenda.listOrder ?? 0);
+  if (orders.length === 0) return 0;
+  return Math.min(...orders) - 1;
+}
+
+function reorderAgendas(
+  agendas: Agenda[],
+  matcher: (agenda: Agenda) => boolean,
+  id: string,
+  nextIndex: number,
+): Agenda[] {
+  const scoped = sortByListOrder(agendas.filter(matcher));
+  const currentIndex = scoped.findIndex((agenda) => agenda.id === id);
+  if (currentIndex < 0) return agendas;
+  const targetIndex = clamp(nextIndex, 0, scoped.length - 1);
+  if (targetIndex === currentIndex) return agendas;
+
+  const reordered = [...scoped];
+  const [moved] = reordered.splice(currentIndex, 1);
+  reordered.splice(targetIndex, 0, moved);
+  const reassigned = assignOrders(reordered);
+  const byId = new Map(reassigned.map((agenda) => [agenda.id, agenda]));
+  return agendas.map((agenda) => byId.get(agenda.id) ?? agenda);
+}
+
 export const useClearDayStore = create<ClearDayState>((set, get) => ({
   ready: false,
   agendas: [],
@@ -190,7 +256,7 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
       fontSizeMultiplier: rawConfig.fontSizeMultiplier ?? 1.0,
       vaultRetentionDays: rawConfig.vaultRetentionDays ?? 0,
     };
-    const normalizedAgendas = loadedAgendas.map((a) => ({ ...a, domain: resolveTag(a.domain, tags) }));
+    const normalizedAgendas = normalizeAgendaOrders(loadedAgendas.map((a) => ({ ...a, domain: resolveTag(a.domain, tags) })));
     const normalizedVault = loadedVault.map((v) => ({ ...v, domain: resolveTag(v.domain, tags) }));
     const holdPolicy = applyHoldExpiryPolicy(normalizedAgendas, config.holdExpiryDefault);
     const agendas = holdPolicy.agendas;
@@ -199,8 +265,9 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     set({ agendas, vault, mit, config, ready: true });
 
     const tagsChanged = JSON.stringify(rawConfig.tags ?? []) !== JSON.stringify(tags);
+    const orderChanged = loadedAgendas.some((agenda, index) => agenda.listOrder !== normalizedAgendas[index]?.listOrder);
     const vaultChanged = vault.length !== [...holdPolicy.vault, ...normalizedVault].length;
-    if (holdPolicy.vault.length > 0 || tagsChanged || vaultChanged) {
+    if (holdPolicy.vault.length > 0 || tagsChanged || vaultChanged || orderChanged) {
       await Promise.all([saveAgendas(agendas), saveVault(vault), saveConfig(config)]);
     }
   },
@@ -326,6 +393,7 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
       cy,
       quadrant: qFromPos(cx, cy),
       status: 'active',
+      listOrder: nextOrderForGroup(get().agendas, (item) => item.status === 'active' && item.quadrant === qFromPos(cx, cy)),
       createdAt: Date.now(),
     };
     const agendas = [agenda, ...get().agendas];
@@ -345,7 +413,30 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
   },
 
   completeAgenda: async (id: string) => {
-    const agendas = get().agendas.map((a) => (a.id === id ? { ...a, status: 'done' as const, doneAt: Date.now() } : a));
+    const agendas = get().agendas.map((a) => {
+      if (a.id !== id) return a;
+      return {
+        ...a,
+        status: 'done' as const,
+        doneAt: Date.now(),
+        onHoldAt: undefined,
+        listOrder: nextOrderForGroup(get().agendas, (item) => item.status === 'done'),
+      };
+    });
+    set({ agendas });
+    await saveAgendas(agendas);
+  },
+
+  restoreCompletedAgenda: async (id: string) => {
+    const agendas = get().agendas.map((a) => {
+      if (a.id !== id || a.status !== 'done') return a;
+      return {
+        ...a,
+        status: 'active' as const,
+        doneAt: undefined,
+        listOrder: nextOrderForGroup(get().agendas, (item) => item.status === 'active' && item.quadrant === a.quadrant),
+      };
+    });
     set({ agendas });
     await saveAgendas(agendas);
   },
@@ -355,10 +446,39 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     const agendas = get().agendas.map((a) => {
       if (a.id !== id) return a;
       if (a.status === 'onhold') {
-        return { ...a, status: 'active' as const, onHoldAt: undefined };
+        return {
+          ...a,
+          status: 'active' as const,
+          onHoldAt: undefined,
+          listOrder: nextOrderForGroup(get().agendas, (item) => item.status === 'active' && item.quadrant === a.quadrant),
+        };
       }
-      return { ...a, status: 'onhold' as const, onHoldAt: holdExpiryOn ? Date.now() : undefined };
+      return {
+        ...a,
+        status: 'onhold' as const,
+        onHoldAt: holdExpiryOn ? Date.now() : undefined,
+        listOrder: nextOrderForGroup(get().agendas, (item) => item.status === 'onhold'),
+      };
     });
+    set({ agendas });
+    await saveAgendas(agendas);
+  },
+
+  reorderActiveAgenda: async (id: string, nextIndex: number) => {
+    const agenda = get().agendas.find((item) => item.id === id);
+    if (!agenda || agenda.status !== 'active') return;
+    const agendas = reorderAgendas(
+      get().agendas,
+      (item) => item.status === 'active' && item.quadrant === agenda.quadrant,
+      id,
+      nextIndex,
+    );
+    set({ agendas });
+    await saveAgendas(agendas);
+  },
+
+  reorderHoldAgenda: async (id: string, nextIndex: number) => {
+    const agendas = reorderAgendas(get().agendas, (item) => item.status === 'onhold', id, nextIndex);
     set({ agendas });
     await saveAgendas(agendas);
   },
@@ -405,7 +525,13 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     if (!entry) return;
     const vault = get().vault.filter((v) => v.id !== id);
     const { archivedAt, ...agenda } = entry;
-    const agendas = [{ ...agenda, status: 'onhold' as const, onHoldAt: undefined }, ...get().agendas];
+    const agendas = [{
+      ...agenda,
+      status: 'onhold' as const,
+      onHoldAt: undefined,
+      doneAt: undefined,
+      listOrder: nextOrderForGroup(get().agendas, (item) => item.status === 'onhold'),
+    }, ...get().agendas];
     set({ agendas, vault });
     await persistSnapshot({ agendas, vault });
   },
@@ -415,7 +541,13 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     if (!entry) return;
     const vault = get().vault.filter((v) => v.id !== id);
     const { archivedAt, ...agenda } = entry;
-    const agendas = [{ ...agenda, status: 'active' as const, onHoldAt: undefined }, ...get().agendas];
+    const agendas = [{
+      ...agenda,
+      status: 'active' as const,
+      onHoldAt: undefined,
+      doneAt: undefined,
+      listOrder: nextOrderForGroup(get().agendas, (item) => item.status === 'active' && item.quadrant === agenda.quadrant),
+    }, ...get().agendas];
     set({ agendas, vault });
     await persistSnapshot({ agendas, vault });
   },
@@ -441,7 +573,12 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     const holdExpiryOn = get().config.holdExpiryDefault === 'on_60d';
     const agendas = get().agendas.map((a) => {
       if (!idSet.has(a.id) || a.status === 'done') return a;
-      return { ...a, status: 'onhold' as const, onHoldAt: holdExpiryOn ? Date.now() : undefined };
+      return {
+        ...a,
+        status: 'onhold' as const,
+        onHoldAt: holdExpiryOn ? Date.now() : undefined,
+        listOrder: nextOrderForGroup(get().agendas, (item) => item.status === 'onhold'),
+      };
     });
     set({ agendas });
     await saveAgendas(agendas);
@@ -451,7 +588,12 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     const idSet = new Set(ids);
     const agendas = get().agendas.map((a) => {
       if (!idSet.has(a.id) || a.status !== 'onhold') return a;
-      return { ...a, status: 'active' as const, onHoldAt: undefined };
+      return {
+        ...a,
+        status: 'active' as const,
+        onHoldAt: undefined,
+        listOrder: nextOrderForGroup(get().agendas, (item) => item.status === 'active' && item.quadrant === a.quadrant),
+      };
     });
     set({ agendas });
     await saveAgendas(agendas);

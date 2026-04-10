@@ -7,6 +7,7 @@ import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
 import { moderateScale, fontScale } from '../clearday/scale';
 import { NavCtx } from '../clearday/ClarityApp';
+import { ReorderHandle } from '../components/ReorderHandle';
 
 interface Props { tokens: ThemeTokens; fontChoice: string; }
 
@@ -18,9 +19,10 @@ export function HoldScreen({ tokens, fontChoice }: Props) {
   const insets = useSafeAreaInsets();
   const fonts = getFontSet(fontChoice as any);
   const nav = useContext(NavCtx);
-  const { agendas, toggleHold, archiveAgenda } = useClearDayStore();
+  const { agendas, toggleHold, archiveAgenda, reorderHoldAgenda } = useClearDayStore();
   const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
-  const onHold = agendas.filter(a => a.status === 'onhold');
+  const onHold = [...agendas.filter(a => a.status === 'onhold')]
+    .sort((a, b) => (a.listOrder ?? 0) - (b.listOrder ?? 0) || a.createdAt - b.createdAt);
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top },
@@ -63,11 +65,19 @@ export function HoldScreen({ tokens, fontChoice }: Props) {
               <Text style={s.rowText} numberOfLines={1}>{agenda.text}</Text>
               <View style={s.rowBtns}>
                 <TouchableOpacity style={s.rowBtn} onPress={async () => { await toggleHold(agenda.id); nav.showToast('Resumed'); }}>
-                  <Text style={[s.rowBtnText, { color: tokens.accent }]}>+</Text>
+                  <Text style={[s.rowBtnText, { color: tokens.accent, fontSize: fontScale(16.1, fontSizeMultiplier) }]}>+</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.rowBtn} onPress={async () => { await archiveAgenda(agenda.id); nav.showToast('Archived'); }}>
                   <Text style={s.rowBtnText}>↓</Text>
                 </TouchableOpacity>
+                <ReorderHandle
+                  color={tokens.textGhost}
+                  onMoveBy={(delta) => {
+                    const currentIndex = onHold.findIndex((item) => item.id === agenda.id);
+                    if (currentIndex < 0) return;
+                    void reorderHoldAgenda(agenda.id, currentIndex + delta);
+                  }}
+                />
               </View>
             </TouchableOpacity>
           ))}

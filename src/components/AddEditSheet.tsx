@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, PanResponder,
+  StyleSheet, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, PanResponder, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Polygon, Rect, Line, Circle, Text as SvgText } from 'react-native-svg';
@@ -18,6 +18,16 @@ const EFFORT_TIME: Record<number, string> = { 1: 'quick', 2: 'short', 3: 'medium
 const EFFORT_RADII: Record<string, number> = { quick: 20, short: 29, medium: 38, deep: 50 };
 function getRadius(time: string) { return EFFORT_RADII[time] ?? 29; }
 const Q_LABEL: Record<string, string> = { Q1: 'Do Now', Q2: 'Schedule', Q3: 'Delegate', Q4: 'Eliminate' };
+
+function sliderFromCx(cx?: number): number {
+  if (typeof cx !== 'number') return 50;
+  return Math.max(5, Math.min(95, Math.round(((cx - 0.05) / 0.9) * 100)));
+}
+
+function sliderFromCy(cy?: number): number {
+  if (typeof cy !== 'number') return 50;
+  return Math.max(5, Math.min(95, Math.round(100 - (((cy - 0.05) / 0.9) * 100))));
+}
 
 function effortLevelFromTime(time?: string): number {
   if (time === 'quick') return 1;
@@ -52,11 +62,11 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
   const [title, setTitle] = useState(preset?.defaultText ?? existingAgenda?.text ?? '');
   const [urgency, setUrgency] = useState(
     preset?.urgency != null ? preset.urgency :
-    existingAgenda?.cx != null ? Math.round(existingAgenda.cx * 90 + 5) : 50
+    sliderFromCx(existingAgenda?.cx)
   );
   const [importance, setImportance] = useState(
     preset?.importance != null ? preset.importance :
-    existingAgenda?.cy != null ? Math.round((1 - existingAgenda.cy) * 90 + 5) : 50
+    sliderFromCy(existingAgenda?.cy)
   );
   const [effort, setEffort] = useState(3);
   const [selectedTag, setSelectedTag] = useState(
@@ -66,6 +76,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
   const [sliderKey, setSliderKey] = useState(0);
   const [showScrollIndicator, setShowScrollIndicator] = useState(false);
   const [scrollHeight, setScrollHeight] = useState(0);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   const dismissPan = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => true,
@@ -76,8 +87,8 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
 
   useEffect(() => {
     if (existingAgenda) {
-      const nextUrgency = Math.round(existingAgenda.cx * 90 + 5);
-      const nextImportance = Math.round((1 - existingAgenda.cy) * 90 + 5);
+      const nextUrgency = sliderFromCx(existingAgenda.cx);
+      const nextImportance = sliderFromCy(existingAgenda.cy);
       setTitle(existingAgenda.text);
       setUrgency(nextUrgency);
       setImportance(nextImportance);
@@ -96,6 +107,17 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
     setIsMIT(false);
     setSliderKey(k => k + 1);
   }, [agendaId, existingAgenda, preset, config.tags, mit]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const { cx, cy } = posFromSliders(urgency, importance);
   const quadrant = qFromPos(cx, cy);
@@ -121,7 +143,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
 
   const s = StyleSheet.create({
     overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: tokens.overlay, justifyContent: 'flex-end' },
-    sheet: { backgroundColor: tokens.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: insets.bottom + 8, maxHeight: '64%' },
+    sheet: { backgroundColor: tokens.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: keyboardVisible ? 2 : insets.bottom + 8, maxHeight: '64%' },
     handleArea: { width: '100%', alignItems: 'center', paddingTop: 8, paddingBottom: 8 },
     handle: { width: 36, height: 3, backgroundColor: tokens.border, borderRadius: 2 },
     scroll: { paddingHorizontal: 16 },
@@ -137,7 +159,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
     tagText: { fontFamily: fonts.serif, fontSize: fontScale(11, fontSizeMultiplier) },
     preview: { flexDirection: 'row', gap: 6, marginBottom: 12 },
     previewLabel: { fontFamily: fonts.serifItalic, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.accent, alignSelf: 'center' },
-    submitBtn: { marginHorizontal: 16, height: 48, borderRadius: 6, justifyContent: 'center', alignItems: 'center', marginTop: 2 },
+    submitBtn: { marginHorizontal: 16, height: 48, borderRadius: 6, justifyContent: 'center', alignItems: 'center', marginTop: 2, marginBottom: keyboardVisible ? 2 : 0 },
     submitText: { fontFamily: fonts.serif, fontSize: fontScale(14, fontSizeMultiplier), color: tokens.surface },
     quickActions: { flexDirection: 'row', gap: 8, marginBottom: 12 },
     quickBtn: {
@@ -187,7 +209,8 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'position' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? -2 : 0}
       style={s.overlay}
     >
       <TouchableWithoutFeedback onPress={onClose}>
@@ -304,6 +327,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
                   {existingAgenda ? 'Save Changes' : `Place in ${Q_LABEL[quadrant]}`}
                 </Text>
               </TouchableOpacity>
+              {keyboardVisible && <View style={{ height: 10, backgroundColor: tokens.surface }} />}
       </View>
     </KeyboardAvoidingView>
   );
