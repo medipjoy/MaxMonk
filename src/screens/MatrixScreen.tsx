@@ -96,11 +96,11 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: tokens.bg },
-    filterRow: { height: 26, paddingHorizontal: 10, flexDirection: 'row', gap: 4, alignItems: 'center', justifyContent: 'center' },
+    filterRow: { height: 26, paddingHorizontal: 10, flexDirection: 'row', gap: 2, alignItems: 'center', justifyContent: 'center' },
     chip: { flexDirection: 'row', alignItems: 'center', borderRadius: 2, paddingHorizontal: 6, paddingVertical: 1, gap: 4 },
     chipDot: { width: 3, height: 3, borderRadius: 1.5 },
     chipText: { fontSize: fontScale(8.5, fontSizeMultiplier) },
-    canvas: { flex: 1, position: 'relative', paddingHorizontal: 8, paddingTop: 4, paddingBottom: 8 },
+    canvas: { flex: 1, position: 'relative' },
     q1Warning: {
       position: 'absolute', right: 6, bottom: canvasSize.height / 2 + 4,
       backgroundColor: 'rgba(184,50,50,0.08)', borderWidth: 1, borderColor: 'rgba(184,50,50,0.22)',
@@ -112,13 +112,12 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
     const { width: W, height: H } = canvasSize;
     if (W === 0) return null;
 
-    // Subtract padding from canvas dimensions for SVG background
-    const svgW = W - 16;
-    const svgH = H - 16;
+    const svgW = W;
+    const svgH = H;
 
     if (matrixStyle === 'editorial') {
       return (
-        <Svg width={svgW} height={svgH} style={{ position: 'absolute', top: 8, left: 8 }} pointerEvents="none">
+        <Svg width={svgW} height={svgH} style={{ position: 'absolute', top: 0, left: 0 }} pointerEvents="none">
           <Line x1={svgW / 2} y1={0} x2={svgW / 2} y2={svgH} stroke={tokens.axisLine} strokeWidth={1} />
           <Line x1={0} y1={svgH / 2} x2={svgW} y2={svgH / 2} stroke={tokens.axisLine} strokeWidth={1} />
           <SvgText x={svgW / 2 - 4} y={svgH / 2 - 6} fontSize={10.5 * fontSizeMultiplier} fill={tokens.q2} opacity={0.15} fontStyle="italic" textAnchor="end">Schedule</SvgText>
@@ -143,7 +142,7 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
         );
       }
       return (
-        <Svg width={svgW} height={svgH} style={{ position: 'absolute', top: 8, left: 8 }} pointerEvents="none">
+        <Svg width={svgW} height={svgH} style={{ position: 'absolute', top: 0, left: 0 }} pointerEvents="none">
           <Rect width={svgW} height={svgH} fill="white" />
           {minorLines}
           {majorLines.map((l, i) => <Line key={`mj${i}`} x1={(l.props as any).x1} y1={(l.props as any).y1} x2={(l.props as any).x2} y2={(l.props as any).y2} stroke="rgba(0,0,0,0.08)" strokeWidth={1} />)}
@@ -157,7 +156,7 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
 
     // Tinted (default)
     return (
-      <Svg width={svgW} height={svgH} style={{ position: 'absolute', top: 8, left: 8 }} pointerEvents="none">
+      <Svg width={svgW} height={svgH} style={{ position: 'absolute', top: 0, left: 0 }} pointerEvents="none">
         <Rect x={0} y={0} width={svgW / 2} height={svgH / 2} fill={tokens.q2Wash} />
         <Rect x={svgW / 2} y={0} width={svgW / 2} height={svgH / 2} fill={tokens.q1Wash} />
         <Rect x={0} y={svgH / 2} width={svgW / 2} height={svgH / 2} fill={tokens.q4Wash} />
@@ -173,9 +172,9 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
     );
   };
 
-  // Canvas dimensions accounting for padding (used by bubbles)
-  const innerW = canvasSize.width - 16;
-  const innerH = canvasSize.height - 16;
+  // Canvas dimensions (no padding — full edge-to-edge)
+  const innerW = canvasSize.width;
+  const innerH = canvasSize.height;
 
   return (
     <View style={s.container}>
@@ -356,7 +355,7 @@ function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdi
           borderRadius: radius,
           backgroundColor: wash,
           borderWidth: 1.5,
-          borderColor: color + 'B8', // 72% opacity
+          borderColor: color + 'BF', // 75% opacity
           justifyContent: 'center',
           alignItems: 'center',
           opacity: isOnHold ? 0.42 : 1,
