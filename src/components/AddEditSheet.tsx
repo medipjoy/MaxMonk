@@ -34,7 +34,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
   const fonts = getFontSet(fontChoice as any);
   const insets = useSafeAreaInsets();
   const nav = useContext(NavCtx);
-  const { config, agendas, mit, addAgenda, updateAgenda, removeSpark } = useClearDayStore();
+  const { config, agendas, mit, addAgenda, updateAgenda, removeSpark, completeAgenda, toggleHold, archiveAgenda } = useClearDayStore();
   const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
 
   const existingAgenda = agendaId ? agendas.find(a => a.id === agendaId) : null;
@@ -112,6 +112,13 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
     previewLabel: { fontFamily: fonts.serifItalic, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.accent, alignSelf: 'center' },
     submitBtn: { marginHorizontal: 16, height: 48, borderRadius: 6, justifyContent: 'center', alignItems: 'center', marginTop: 4 },
     submitText: { fontFamily: fonts.serif, fontSize: fontScale(14, fontSizeMultiplier), color: tokens.surface },
+    quickActions: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+    quickBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      paddingHorizontal: 10, paddingVertical: 6, borderRadius: 5,
+      borderWidth: 0.5, borderColor: tokens.borderMid,
+    },
+    quickBtnText: { fontFamily: fonts.serif, fontSize: fontScale(10, fontSizeMultiplier), color: tokens.textMuted },
   });
 
   const StarIcon = ({ active }: { active: boolean }) => (
@@ -216,10 +223,31 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
                 </View>
 
                 {/* Quadrant preview */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: existingAgenda ? 10 : 16 }}>
                   <QuadPreview />
                   <Text style={s.previewLabel}>→ {Q_LABEL[quadrant]} · {quadrant}</Text>
                 </View>
+
+                {/* Quick actions (edit mode only) */}
+                {existingAgenda && (
+                  <View style={s.quickActions}>
+                    <TouchableOpacity style={s.quickBtn} onPress={async () => { await completeAgenda(existingAgenda.id); onSave('Done'); }}>
+                      <Text style={[s.quickBtnText, { color: tokens.q2 }]}>✓</Text>
+                      <Text style={s.quickBtnText}>Done</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.quickBtn} onPress={async () => {
+                      await toggleHold(existingAgenda.id);
+                      onSave(existingAgenda.status === 'onhold' ? 'Resumed' : 'On Hold');
+                    }}>
+                      <Text style={s.quickBtnText}>–</Text>
+                      <Text style={s.quickBtnText}>{existingAgenda.status === 'onhold' ? 'Resume' : 'Hold'}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.quickBtn} onPress={async () => { await archiveAgenda(existingAgenda.id); onSave('Archived'); }}>
+                      <Text style={s.quickBtnText}>↓</Text>
+                      <Text style={s.quickBtnText}>Archive</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </ScrollView>
 
               {/* Submit */}

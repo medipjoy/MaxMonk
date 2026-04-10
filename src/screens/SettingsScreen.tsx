@@ -55,7 +55,7 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
   const insets = useSafeAreaInsets();
   const fonts = getFontSet(fontChoice as any);
   const nav = useContext(NavCtx);
-  const { config, setThemeMode, setTags, agendas, vault } = useClearDayStore();
+  const { config, setThemeMode, setTags } = useClearDayStore();
   const store = useClearDayStore();
 
   // Proxy setters via store (we add these to action functions)
@@ -79,10 +79,6 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
     const newCfg = { ...config, fontSizeMultiplier: multiplier };
     useClearDayStore.setState({ config: newCfg });
   };
-
-  const holdCount = agendas.filter(a => a.status === 'onhold').length;
-  const archiveCount = vault.length;
-  const completedCount = agendas.filter(a => a.status === 'done').length;
 
   const currentFontSize = config.fontSizeMultiplier ?? 1.0;
   const fontSizeMultiplier = currentFontSize;
@@ -180,21 +176,6 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
           <Text style={s.rowValue}>{HOUR_LABEL(mitResetHour)}</Text>
         </View>
         <Text style={s.helpText}>MIT = Most Important Task. Your top agenda wins the day.</Text>
-
-        {/* Manage */}
-        <Text style={s.sectionLabel}>Manage</Text>
-        <TouchableOpacity style={s.row} onPress={() => nav.goTo('hold')}>
-          <Text style={s.rowLabel}>On Hold</Text>
-          <Text style={s.rowValue}>{holdCount} items →</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.row} onPress={() => nav.goTo('vault')}>
-          <Text style={s.rowLabel}>Archive</Text>
-          <Text style={s.rowValue}>{archiveCount} items →</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.row} onPress={() => nav.goTo('completed')}>
-          <Text style={s.rowLabel}>Completed</Text>
-          <Text style={s.rowValue}>{completedCount} items →</Text>
-        </TouchableOpacity>
 
         {/* Clarity footer */}
         <Text style={s.sectionLabel}>Clarity</Text>

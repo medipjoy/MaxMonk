@@ -76,6 +76,7 @@ interface ClearDayState {
 
   archiveAgenda: (id: string) => Promise<void>;
   restoreVaultAgenda: (id: string) => Promise<void>;
+  restoreVaultToActive: (id: string) => Promise<void>;
   deleteVaultAgenda: (id: string) => Promise<void>;
 
   bulkArchiveToVault: (ids: string[]) => Promise<void>;
@@ -456,6 +457,16 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     const vault = get().vault.filter((v) => v.id !== id);
     const { archivedAt, ...agenda } = entry;
     const agendas = [{ ...agenda, status: 'onhold' as const, onHoldAt: undefined }, ...get().agendas];
+    set({ agendas, vault });
+    await persistSnapshot({ agendas, vault, sparks: get().sparks });
+  },
+
+  restoreVaultToActive: async (id: string) => {
+    const entry = get().vault.find((v) => v.id === id);
+    if (!entry) return;
+    const vault = get().vault.filter((v) => v.id !== id);
+    const { archivedAt, ...agenda } = entry;
+    const agendas = [{ ...agenda, status: 'active' as const, onHoldAt: undefined }, ...get().agendas];
     set({ agendas, vault });
     await persistSnapshot({ agendas, vault, sparks: get().sparks });
   },

@@ -323,7 +323,7 @@ function SidebarItem({
 
 function Sidebar({ tokens, fontChoice, screen, goTo, openPanel }: { tokens: any; fontChoice: string; screen: Screen; goTo: (s: Screen) => void; openPanel: (p: Panel) => void }) {
   const SUB_SCREENS: { key: Screen; label: string }[] = [
-    { key: 'reflect', label: 'Reflect' },
+    { key: 'completed', label: 'Completed' },
     { key: 'hold', label: 'On Hold' },
     { key: 'vault', label: 'Archive' },
     { key: 'settings', label: 'Settings' },

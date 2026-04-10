@@ -2,7 +2,7 @@ import React, { useCallback, useContext, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, LayoutChangeEvent,
   TouchableOpacity, TouchableWithoutFeedback, PanResponder,
-  Animated, Platform,
+  Animated, Platform, ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Text as SvgText, Rect } from 'react-native-svg';
@@ -41,6 +41,46 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
   const [selectedTags, setSelectedTags] = useState<Set<string> | null>(null); // null = all
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const canvasRef = useRef<View>(null);
+  const [zoom, setZoom] = useState(1); // 1 | 1.5 | 2
+  const ZOOM_LEVELS = [1, 1.5, 2];
+  const panX = useRef(new Animated.Value(0)).current;
+  const panY = useRef(new Animated.Value(0)).current;
+  const panOffset = useRef({ x: 0, y: 0 });
+
+  const canvasPan = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => false,
+    onMoveShouldSetPanResponder: (_, gs) => zoom > 1 && (Math.abs(gs.dx) > 4 || Math.abs(gs.dy) > 4),
+    onPanResponderGrant: () => {
+      panX.stopAnimation(v => { panOffset.current.x = v; });
+      panY.stopAnimation(v => { panOffset.current.y = v; });
+    },
+    onPanResponderMove: (_, gs) => {
+      const maxPan = canvasSize.width * (zoom - 1) / 2;
+      const maxPanY = canvasSize.height * (zoom - 1) / 2;
+      const nx = Math.max(-maxPan, Math.min(maxPan, panOffset.current.x + gs.dx));
+      const ny = Math.max(-maxPanY, Math.min(maxPanY, panOffset.current.y + gs.dy));
+      panX.setValue(nx);
+      panY.setValue(ny);
+    },
+    onPanResponderRelease: (_, gs) => {
+      const maxPan = canvasSize.width * (zoom - 1) / 2;
+      const maxPanY = canvasSize.height * (zoom - 1) / 2;
+      panOffset.current.x = Math.max(-maxPan, Math.min(maxPan, panOffset.current.x + gs.dx));
+      panOffset.current.y = Math.max(-maxPanY, Math.min(maxPanY, panOffset.current.y + gs.dy));
+    },
+  })).current;
+
+  const handleZoomIn = () => {
+    const i = ZOOM_LEVELS.indexOf(zoom);
+    if (i < ZOOM_LEVELS.length - 1) setZoom(ZOOM_LEVELS[i + 1]);
+  };
+  const handleZoomOut = () => {
+    const i = ZOOM_LEVELS.indexOf(zoom);
+    if (i > 0) {
+      setZoom(ZOOM_LEVELS[i - 1]);
+      if (i - 1 === 0) { panX.setValue(0); panY.setValue(0); panOffset.current = { x: 0, y: 0 }; }
+    }
+  };
 
   // Single vs double tap detection
   const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -102,6 +142,16 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
     chipText: { fontSize: 6.5 },
     canvas: { flex: 1, position: 'relative', paddingHorizontal: 8, paddingTop: 8, paddingBottom: 35 },
     sparksBtn: { position: 'absolute', top: 8, right: 8, width: 28, height: 28, justifyContent: 'center', alignItems: 'center' },
+    zoomControls: {
+      position: 'absolute', bottom: 40, right: 8,
+      flexDirection: 'column', gap: 2,
+    },
+    zoomBtn: {
+      width: 26, height: 26, borderRadius: 4,
+      backgroundColor: tokens.surface, borderWidth: 0.5, borderColor: tokens.borderMid,
+      justifyContent: 'center', alignItems: 'center',
+    },
+    zoomBtnText: { fontSize: 14, color: tokens.textMuted, lineHeight: 18 },
     q1Warning: {
       position: 'absolute', right: 6, bottom: canvasSize.height / 2 + 4,
       backgroundColor: 'rgba(184,50,50,0.08)', borderWidth: 1, borderColor: 'rgba(184,50,50,0.22)',
@@ -217,40 +267,54 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
       </View>
 
       {/* Matrix Canvas */}
-      <TouchableWithoutFeedback onPress={handleCanvasTap}>
-        <View ref={canvasRef} style={s.canvas} onLayout={onLayout}>
-          {renderBackground()}
+      <View ref={canvasRef} style={[s.canvas, { overflow: 'hidden' }]} onLayout={onLayout} {...canvasPan.panHandlers}>
+        <TouchableWithoutFeedback onPress={zoom === 1 ? handleCanvasTap : undefined}>
+          <Animated.View
+            style={{
+              flex: 1,
+              transform: [{ scale: zoom }, { translateX: panX }, { translateY: panY }],
+            }}
+          >
+            {renderBackground()}
 
-          {/* Bubbles */}
-          {innerW > 0 && activeAgendas.map(agenda => (
-            <Bubble
-              key={agenda.id}
-              agenda={agenda}
-              tokens={tokens}
-              fonts={fonts}
-              canvasWidth={innerW}
-              canvasHeight={innerH}
-              onTap={() => { nav.setBubbleActionId(agenda.id); nav.openPanel('bubbleAction'); }}
-              onEdit={() => { nav.setEditAgendaId(agenda.id); nav.openPanel('edit'); }}
-              onDrop={(cx, cy) => updateAgendaPosition(agenda.id, cx, cy)}
-            />
-          ))}
+            {innerW > 0 && activeAgendas.map(agenda => (
+              <Bubble
+                key={agenda.id}
+                agenda={agenda}
+                tokens={tokens}
+                fonts={fonts}
+                canvasWidth={innerW}
+                canvasHeight={innerH}
+                onTap={() => { nav.setBubbleActionId(agenda.id); nav.openPanel('bubbleAction'); }}
+                onEdit={() => { nav.setEditAgendaId(agenda.id); nav.openPanel('edit'); }}
+                onDrop={(cx, cy) => updateAgendaPosition(agenda.id, cx, cy)}
+              />
+            ))}
 
-          {/* Sparks icon */}
-          <TouchableOpacity style={s.sparksBtn} onPress={() => nav.openPanel('sparks')}>
-            <Text style={{ fontSize: 16, color: tokens.goldLight, opacity: 0.6 }}>✦</Text>
+            <TouchableOpacity style={s.sparksBtn} onPress={() => nav.openPanel('sparks')}>
+              <Text style={{ fontSize: 16, color: tokens.goldLight, opacity: 0.6 }}>✦</Text>
+            </TouchableOpacity>
+
+            {q1Count > 5 && (
+              <View style={s.q1Warning}>
+                <Text style={{ fontFamily: fonts.serifItalic, fontSize: 6.5, color: tokens.q1 }}>
+                  5+ items — consider delegating
+                </Text>
+              </View>
+            )}
+          </Animated.View>
+        </TouchableWithoutFeedback>
+
+        {/* Zoom controls — always above canvas content */}
+        <View style={s.zoomControls} pointerEvents="box-none">
+          <TouchableOpacity style={s.zoomBtn} onPress={handleZoomIn} disabled={zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}>
+            <Text style={[s.zoomBtnText, { opacity: zoom === ZOOM_LEVELS[ZOOM_LEVELS.length - 1] ? 0.3 : 1 }]}>+</Text>
           </TouchableOpacity>
-
-          {/* Q1 overflow warning */}
-          {q1Count > 5 && (
-            <View style={s.q1Warning}>
-              <Text style={{ fontFamily: fonts.serifItalic, fontSize: 6.5, color: tokens.q1 }}>
-                5+ items — consider delegating
-              </Text>
-            </View>
-          )}
+          <TouchableOpacity style={s.zoomBtn} onPress={handleZoomOut} disabled={zoom === 1}>
+            <Text style={[s.zoomBtnText, { opacity: zoom === 1 ? 0.3 : 1 }]}>−</Text>
+          </TouchableOpacity>
         </View>
-      </TouchableWithoutFeedback>
+      </View>
     </View>
   );
 }

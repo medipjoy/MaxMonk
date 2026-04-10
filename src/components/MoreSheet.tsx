@@ -13,7 +13,7 @@ interface Props {
 }
 
 const ITEMS: { label: string; screen: Screen }[] = [
-  { label: 'Log', screen: 'reflect' },
+  { label: 'Completed', screen: 'completed' },
   { label: 'On Hold', screen: 'hold' },
   { label: 'Archive', screen: 'vault' },
   { label: 'Settings', screen: 'settings' },
