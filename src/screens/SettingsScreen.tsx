@@ -1,5 +1,5 @@
 import React, { useContext, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform, Share, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform, Share, TextInput, TouchableWithoutFeedback, PanResponder } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line } from 'react-native-svg';
 import { useClearDayStore } from '../clearday/store';
@@ -7,6 +7,7 @@ import { ThemeTokens, ThemeMode, MatrixStyle } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
 import { moderateScale, fontScale } from '../clearday/scale';
 import { NavCtx } from '../clearday/ClarityApp';
+import { formatQuadrantPresetSummary, getQuadrantPresetIndex, QUADRANT_PRESETS } from '../clearday/quadrantPresets';
 
 interface Props {
   tokens: ThemeTokens;
@@ -56,8 +57,9 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
   const insets = useSafeAreaInsets();
   const fonts = getFontSet(fontChoice as any);
   const nav = useContext(NavCtx);
-  const { config, setThemeMode, setTags, setVaultRetentionDays, addTag, removeTag, renameTag } = useClearDayStore();
+  const { config, setThemeMode, setTags, setVaultRetentionDays, addTag, removeTag, renameTag, setQuadrantLabels } = useClearDayStore();
   const store = useClearDayStore();
+  const [showQuadrantPicker, setShowQuadrantPicker] = useState(false);
 
   // Proxy setters via store (we add these to action functions)
   const setMatrixStyle = async (style: MatrixStyle) => {
@@ -95,6 +97,13 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
   const addInputRef = useRef<TextInput>(null);
 
   const tags = config.tags ?? ['Pro', 'Per'];
+  const selectedQuadrantPreset = getQuadrantPresetIndex(config.quadrantLabels);
+  const dismissPan = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 5,
+    onPanResponderMove: () => {},
+    onPanResponderRelease: (_, gs) => { if (gs.dy > 80) setShowQuadrantPicker(false); },
+  })).current;
 
   const capFirst = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 
@@ -197,6 +206,12 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
     fontSizeBtns: { flexDirection: 'row', gap: 8 },
     fontSizeBtn: { borderRadius: 4, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 0.5 },
     fontSizeBtnText: { fontFamily: fonts.serif, fontSize: fontScale(11, fontSizeMultiplier) },
+    presetSheetOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: tokens.overlay, justifyContent: 'flex-end' },
+    presetSheet: { backgroundColor: tokens.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: insets.bottom + 8 },
+    presetHandle: { width: 36, height: 3, backgroundColor: tokens.border, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 8 },
+    presetRow: { height: 44, paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: tokens.border, justifyContent: 'center' },
+    presetValue: { fontFamily: fonts.serif, fontSize: fontScale(11, fontSizeMultiplier), color: tokens.text },
+    presetSelected: { color: tokens.accent },
   });
 
   const fontOptions = ['cormorant', 'baskerville', 'inter', 'jakarta'] as const;
@@ -350,6 +365,16 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
         </View>
         <Text style={s.helpText}>Archived agendas older than this are permanently deleted on next launch.</Text>
 
+        {/* Quadrants */}
+        <Text style={s.sectionLabel}>Quadrants</Text>
+        <TouchableOpacity style={s.row} onPress={() => setShowQuadrantPicker(true)}>
+          <Text style={s.rowLabel}>Naming</Text>
+          <Text style={[s.rowValue, { flex: 1, textAlign: 'right' }]} numberOfLines={1}>
+            {formatQuadrantPresetSummary(config.quadrantLabels)}
+          </Text>
+        </TouchableOpacity>
+        <Text style={s.helpText}>Choose one complete naming set for Q1–Q4. The selected labels update across the app.</Text>
+
         {/* Data */}
         <Text style={s.sectionLabel}>Data</Text>
         <TouchableOpacity style={s.row} onPress={handleExport} disabled={exporting}>
@@ -364,6 +389,36 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
         <Text style={s.sectionLabel}>Clarity</Text>
         <Text style={s.tagline}>{TAGLINE}</Text>
       </ScrollView>
+
+      {showQuadrantPicker && (
+        <TouchableWithoutFeedback onPress={() => setShowQuadrantPicker(false)}>
+          <View style={s.presetSheetOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={s.presetSheet}>
+                <View style={s.presetHandle} {...dismissPan.panHandlers} />
+                {QUADRANT_PRESETS.map((preset, index) => {
+                  const active = index === selectedQuadrantPreset;
+                  return (
+                    <TouchableOpacity
+                      key={`${preset.Q1}-${preset.Q2}-${preset.Q3}-${preset.Q4}`}
+                      style={s.presetRow}
+                      onPress={async () => {
+                        await setQuadrantLabels(preset);
+                        setShowQuadrantPicker(false);
+                        nav.showToast('Quadrant naming updated');
+                      }}
+                    >
+                      <Text style={[s.presetValue, active && s.presetSelected]} numberOfLines={1}>
+                        {`${preset.Q1} / ${preset.Q2} / ${preset.Q3} / ${preset.Q4}`}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      )}
     </View>
   );
 }

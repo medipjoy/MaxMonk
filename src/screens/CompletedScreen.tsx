@@ -7,12 +7,11 @@ import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
 import { fontScale } from '../clearday/scale';
 import { NavCtx } from '../clearday/ClarityApp';
+import { Quadrant } from '../clearday/types';
 
 interface Props { tokens: ThemeTokens; fontChoice: string; }
 
 const Q_ORDER = ['Q1', 'Q2', 'Q3', 'Q4'];
-const Q_LABEL: Record<string, string> = { Q1: 'DO NOW · Q1', Q2: 'SCHEDULE · Q2', Q3: 'DELEGATE · Q3', Q4: 'ELIMINATE · Q4' };
-
 function qColor(q: string, tokens: ThemeTokens) {
   switch (q) { case 'Q1': return tokens.q1; case 'Q2': return tokens.q2; case 'Q3': return tokens.q3; default: return tokens.q4; }
 }
@@ -29,6 +28,7 @@ export function CompletedScreen({ tokens, fontChoice }: Props) {
   const nav = useContext(NavCtx);
   const { agendas, restoreCompletedAgenda, archiveAgenda } = useClearDayStore();
   const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
+  const quadrantLabels = useClearDayStore(s => s.config.quadrantLabels);
 
   const completed = agendas.filter(a => a.status === 'done');
   const grouped: Record<string, typeof completed> = {};
@@ -75,7 +75,7 @@ export function CompletedScreen({ tokens, fontChoice }: Props) {
             return (
               <View key={q}>
                 <View style={s.sectionHeader}>
-                  <Text style={[s.sectionLabel, { color: qColor(q, tokens) }]}>{Q_LABEL[q]}</Text>
+                  <Text style={[s.sectionLabel, { color: qColor(q, tokens) }]}>{`${quadrantLabels[q as Quadrant].toUpperCase()} · ${q}`}</Text>
                 </View>
                 {items.map(agenda => (
                   <TouchableOpacity
@@ -89,9 +89,6 @@ export function CompletedScreen({ tokens, fontChoice }: Props) {
                     <View style={s.rowBtns}>
                       <TouchableOpacity style={s.rowBtn} onPress={async () => { await restoreCompletedAgenda(agenda.id); nav.showToast('Back to Active'); }}>
                         <Text style={[s.rowBtnText, { color: tokens.accent, fontSize: fontScale(16.1, fontSizeMultiplier) }]}>+</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={s.rowBtn} onPress={() => { nav.setEditAgendaId(agenda.id); nav.openPanel('edit'); }}>
-                        <Text style={s.rowBtnText}>✎</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={s.rowBtn} onPress={async () => { await archiveAgenda(agenda.id); nav.showToast('Archived'); }}>
                         <Text style={s.rowBtnText}>↓</Text>

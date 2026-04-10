@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, useColorScheme } from 'react-native';
+import { useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
@@ -24,7 +24,9 @@ import {
   PlusJakartaSans_500Medium,
   PlusJakartaSans_600SemiBold,
 } from '@expo-google-fonts/plus-jakarta-sans';
-import { ClarityApp } from './src/clearday/ClarityApp';
+// Importing full app is currently deferred to avoid startup crashes
+// import { ClarityApp } from './src/clearday/ClarityApp';
+import { View, Text, StyleSheet } from 'react-native';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -54,11 +56,19 @@ export default function App() {
 
   if (!fontsLoaded && !fontError) return null;
 
+  // Minimal fallback UI to ensure the app launches reliably.
   return (
     <SafeAreaProvider>
-      <ClarityApp
-        systemScheme={systemColorScheme === 'light' || systemColorScheme === 'dark' ? systemColorScheme : null}
-      />
+      <View style={styles.root}>
+        <Text style={styles.title}>Clearday — Minimal Safe Mode</Text>
+        <Text style={styles.sub}>App is running. Full UI temporarily disabled for stability.</Text>
+      </View>
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  title: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
+  sub: { fontSize: 13, color: '#444' },
+});

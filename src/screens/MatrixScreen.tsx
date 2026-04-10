@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, LayoutChangeEvent,
   TouchableOpacity, TouchableWithoutFeedback, PanResponder,
@@ -12,7 +12,7 @@ import { getFontSet } from '../clearday/fonts';
 import { moderateScale, fontScale } from '../clearday/scale';
 import { NavCtx } from '../clearday/ClarityApp';
 import { MITStrip } from '../components/MITStrip';
-import { Agenda, MatrixStyle } from '../clearday/types';
+import { Agenda, AgendaTime, MatrixStyle } from '../clearday/types';
 
 const EFFORT_RADII: Record<string, number> = { quick: 20, short: 29, medium: 38, deep: 50 };
 
@@ -36,7 +36,7 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
   const insets = useSafeAreaInsets();
   const fonts = getFontSet(fontChoice as any);
   const nav = useContext(NavCtx);
-  const { agendas, mit, updateAgendaPosition } = useClearDayStore();
+  const { agendas, mit, updateAgendaPosition, updateAgenda } = useClearDayStore();
 
   const [selectedTags, setSelectedTags] = useState<Set<string> | null>(null); // null = all
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
@@ -48,6 +48,7 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
 
   const config = useClearDayStore(s => s.config);
   const allTags = config.tags;
+  const quadrantLabels = config.quadrantLabels;
   const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
 
   const effectiveTags = selectedTags ?? new Set(allTags);
@@ -120,10 +121,10 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
         <Svg width={svgW} height={svgH} style={{ position: 'absolute', top: 0, left: 0 }} pointerEvents="none">
           <Line x1={svgW / 2} y1={0} x2={svgW / 2} y2={svgH} stroke={tokens.axisLine} strokeWidth={1} />
           <Line x1={0} y1={svgH / 2} x2={svgW} y2={svgH / 2} stroke={tokens.axisLine} strokeWidth={1} />
-          <SvgText x={svgW / 2 - 4} y={svgH / 2 - 6} fontSize={10.5 * fontSizeMultiplier} fill={tokens.q2} opacity={0.24} fontStyle="italic" textAnchor="end">Schedule</SvgText>
-          <SvgText x={svgW / 2 + 4} y={svgH / 2 - 6} fontSize={10.5 * fontSizeMultiplier} fill={tokens.q1} opacity={0.24} fontStyle="italic">Do Now</SvgText>
-          <SvgText x={svgW / 2 - 4} y={svgH / 2 + 14} fontSize={10.5 * fontSizeMultiplier} fill={tokens.q4} opacity={0.24} fontStyle="italic" textAnchor="end">Eliminate</SvgText>
-          <SvgText x={svgW / 2 + 4} y={svgH / 2 + 14} fontSize={10.5 * fontSizeMultiplier} fill={tokens.q3} opacity={0.24} fontStyle="italic">Delegate</SvgText>
+          <SvgText x={svgW / 2 - 4} y={svgH / 2 - 6} fontSize={10.5 * fontSizeMultiplier} fill={tokens.q2} opacity={0.24} fontStyle="italic" textAnchor="end">{quadrantLabels.Q2}</SvgText>
+          <SvgText x={svgW / 2 + 4} y={svgH / 2 - 6} fontSize={10.5 * fontSizeMultiplier} fill={tokens.q1} opacity={0.24} fontStyle="italic">{quadrantLabels.Q1}</SvgText>
+          <SvgText x={svgW / 2 - 4} y={svgH / 2 + 14} fontSize={10.5 * fontSizeMultiplier} fill={tokens.q4} opacity={0.24} fontStyle="italic" textAnchor="end">{quadrantLabels.Q4}</SvgText>
+          <SvgText x={svgW / 2 + 4} y={svgH / 2 + 14} fontSize={10.5 * fontSizeMultiplier} fill={tokens.q3} opacity={0.24} fontStyle="italic">{quadrantLabels.Q3}</SvgText>
         </Svg>
       );
     }
@@ -166,10 +167,10 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
         <Line x1={0} y1={svgH / 2} x2={svgW} y2={svgH / 2} stroke={tokens.axisLine} strokeWidth={1} />
         <Line x1={svgW / 2} y1={0} x2={svgW / 2} y2={svgH} stroke={tokens.axisLine} strokeWidth={1} />
         {/* Watermarks — near axis center */}
-        <SvgText x={svgW / 2 - 4} y={svgH / 2 - 6} fontSize={9.5 * fontSizeMultiplier} fill={tokens.q2} opacity={0.38} fontStyle="italic" textAnchor="end">Schedule</SvgText>
-        <SvgText x={svgW / 2 + 4} y={svgH / 2 - 6} fontSize={9.5 * fontSizeMultiplier} fill={tokens.q1} opacity={0.38} fontStyle="italic">Do Now</SvgText>
-        <SvgText x={svgW / 2 - 4} y={svgH / 2 + 14} fontSize={9.5 * fontSizeMultiplier} fill={tokens.q4} opacity={0.38} fontStyle="italic" textAnchor="end">Eliminate</SvgText>
-        <SvgText x={svgW / 2 + 4} y={svgH / 2 + 14} fontSize={9.5 * fontSizeMultiplier} fill={tokens.q3} opacity={0.38} fontStyle="italic">Delegate</SvgText>
+        <SvgText x={svgW / 2 - 4} y={svgH / 2 - 6} fontSize={9.5 * fontSizeMultiplier} fill={tokens.q2} opacity={0.38} fontStyle="italic" textAnchor="end">{quadrantLabels.Q2}</SvgText>
+        <SvgText x={svgW / 2 + 4} y={svgH / 2 - 6} fontSize={9.5 * fontSizeMultiplier} fill={tokens.q1} opacity={0.38} fontStyle="italic">{quadrantLabels.Q1}</SvgText>
+        <SvgText x={svgW / 2 - 4} y={svgH / 2 + 14} fontSize={9.5 * fontSizeMultiplier} fill={tokens.q4} opacity={0.38} fontStyle="italic" textAnchor="end">{quadrantLabels.Q4}</SvgText>
+        <SvgText x={svgW / 2 + 4} y={svgH / 2 + 14} fontSize={9.5 * fontSizeMultiplier} fill={tokens.q3} opacity={0.38} fontStyle="italic">{quadrantLabels.Q3}</SvgText>
       </Svg>
     );
   };
@@ -233,6 +234,7 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
                 onTap={() => { nav.setBubbleActionId(agenda.id); nav.openPanel('bubbleAction'); }}
                 onEdit={() => { nav.setEditAgendaId(agenda.id); nav.openPanel('edit'); }}
                 onDrop={(cx, cy) => updateAgendaPosition(agenda.id, cx, cy)}
+                onResize={(time) => updateAgenda(agenda.id, { time })}
               />
             ))}
 
@@ -260,14 +262,14 @@ interface BubbleProps {
   onTap: () => void;
   onEdit: () => void;
   onDrop: (cx: number, cy: number) => void;
+  onResize: (time: AgendaTime) => void;
 }
 
-function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdit, onDrop }: BubbleProps) {
+function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdit, onDrop, onResize }: BubbleProps) {
   const radius = getRadius(agenda.time);
   const color = qColor(agenda.quadrant, tokens);
   const wash = qWash(agenda.quadrant, tokens);
   const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
-
   // Clamp cx/cy so bubbles near edges remain fully visible
   const clampedCx = Math.max(0.03, Math.min(0.97, agenda.cx));
   const clampedCy = Math.max(0.03, Math.min(0.97, agenda.cy));
@@ -282,11 +284,22 @@ function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdi
   const lastTapTime = useRef(0);
 
   // Long-press detection
-  const pressStartTime = useRef(0);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const fontSize = radius > 40 ? 8 : radius > 28 ? 7 : 6.5;
   const isOnHold = agenda.status === 'onhold';
+  useEffect(() => {
+    // keep animated position in sync when agenda changes
+  }, [agenda.time]);
+
+  useEffect(() => {
+    if (dragging.current) return;
+    const nextX = clampedCx * canvasWidth - radius;
+    const nextY = clampedCy * canvasHeight - radius;
+    lastPos.current = { x: clampedCx * canvasWidth, y: clampedCy * canvasHeight };
+    Animated.spring(posX, { toValue: nextX, useNativeDriver: false }).start();
+    Animated.spring(posY, { toValue: nextY, useNativeDriver: false }).start();
+  }, [clampedCx, clampedCy, canvasWidth, canvasHeight, radius, posX, posY]);
 
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
@@ -295,7 +308,6 @@ function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdi
     onPanResponderGrant: () => {
       dragging.current = true;
       didMove.current = false;
-      pressStartTime.current = Date.now();
       Animated.spring(scale, { toValue: 1.06, useNativeDriver: true }).start();
 
       // Start long-press timer (500ms)

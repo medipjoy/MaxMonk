@@ -5,6 +5,8 @@ import { useClearDayStore } from '../clearday/store';
 import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
 import { moderateScale, fontScale } from '../clearday/scale';
+import { Quadrant } from '../clearday/types';
+import { CheckIcon, PencilIcon } from './ActionIcons';
 
 interface Props {
   tokens: ThemeTokens;
@@ -15,7 +17,6 @@ interface Props {
   onEdit: (id: string) => void;
 }
 
-const Q_LABEL: Record<string, string> = { Q1: 'Do Now', Q2: 'Schedule', Q3: 'Delegate', Q4: 'Eliminate' };
 const TIME_LABEL: Record<string, string> = { quick: '⚡ Quick', short: '◔ Short', medium: '◑ Medium', deep: '● Deep' };
 
 export function BubbleActionSheet({ tokens, fontChoice, agendaId, onClose, onAction, onEdit }: Props) {
@@ -23,6 +24,7 @@ export function BubbleActionSheet({ tokens, fontChoice, agendaId, onClose, onAct
   const insets = useSafeAreaInsets();
   const { agendas, completeAgenda, toggleHold, archiveAgenda, addAgenda } = useClearDayStore();
   const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
+  const quadrantLabels = useClearDayStore(s => s.config.quadrantLabels);
   const agenda = agendas.find(a => a.id === agendaId);
 
   const dismissPan = useRef(PanResponder.create({
@@ -48,10 +50,10 @@ export function BubbleActionSheet({ tokens, fontChoice, agendaId, onClose, onAct
   });
 
   const rows = [
-    { label: '◦  Done', color: tokens.q2, onPress: async () => { await completeAgenda(agendaId); onAction('Done'); } },
-    { label: '✎  Edit', color: tokens.textMuted, onPress: () => onEdit(agendaId) },
-    ...(agenda.status === 'active' ? [{ label: '–  Hold', color: tokens.textMuted, onPress: async () => { await toggleHold(agendaId); onAction('On Hold'); } }] : []),
-    { label: '↓  Archive', color: tokens.textMuted, onPress: async () => { await archiveAgenda(agendaId); onAction('Archived'); } },
+    { label: 'Complete', icon: <CheckIcon color={tokens.q2} size={14} />, onPress: async () => { await completeAgenda(agendaId); onAction('Marked Completed'); } },
+    { label: 'Edit', icon: <PencilIcon color={tokens.textMuted} size={14} />, onPress: () => onEdit(agendaId) },
+    ...(agenda.status === 'active' ? [{ label: 'Hold', icon: <Text style={[s.rowText, { color: tokens.textMuted, width: 16, textAlign: 'center' }]}>–</Text>, onPress: async () => { await toggleHold(agendaId); onAction('On Hold'); } }] : []),
+    { label: 'Archive', icon: <Text style={[s.rowText, { color: tokens.textMuted, width: 16, textAlign: 'center' }]}>↓</Text>, onPress: async () => { await archiveAgenda(agendaId); onAction('Archived'); } },
   ];
 
   return (
@@ -63,11 +65,12 @@ export function BubbleActionSheet({ tokens, fontChoice, agendaId, onClose, onAct
             <View style={s.header}>
               <Text style={s.title} numberOfLines={2}>{agenda.text}</Text>
               <Text style={s.meta}>
-                {Q_LABEL[agenda.quadrant]} · {agenda.domain} · {TIME_LABEL[agenda.time]}
+                {quadrantLabels[agenda.quadrant as Quadrant]} · {agenda.domain} · {TIME_LABEL[agenda.time]}
               </Text>
             </View>
             {rows.map(r => (
               <TouchableOpacity key={r.label} style={s.row} onPress={r.onPress}>
+                <View style={{ width: 16, alignItems: 'center' }}>{r.icon}</View>
                 <Text style={[s.rowText, { flex: 1 }]}>{r.label}</Text>
               </TouchableOpacity>
             ))}
