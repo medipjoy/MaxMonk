@@ -16,13 +16,14 @@ interface Props {
 export function Toast({ tokens, fontChoice, message, visible, bottomOffset }: Props) {
   const fonts = getFontSet(fontChoice as any);
   const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
+  const matrixStyle = useClearDayStore(s => s.config?.matrixStyle ?? 'tinted');
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
       Animated.sequence([
         Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }),
-        Animated.delay(1600),
+        Animated.delay(960),
         Animated.timing(opacity, { toValue: 0, duration: 250, useNativeDriver: true }),
       ]).start();
     }
@@ -30,12 +31,19 @@ export function Toast({ tokens, fontChoice, message, visible, bottomOffset }: Pr
 
   if (!message) return null;
 
+  const toastFill = matrixStyle === 'paper'
+    ? tokens.surface2
+    : matrixStyle === 'editorial'
+      ? tokens.bg
+      : tokens.surface;
+  const toastBorder = matrixStyle === 'editorial' ? tokens.borderMid : tokens.border;
+
   return (
     <Animated.View
       style={[styles.container, {
-        backgroundColor: tokens.surface,
-        borderColor: tokens.border,
-        bottom: 24 + bottomOffset + 56,
+        backgroundColor: toastFill,
+        borderColor: toastBorder,
+        bottom: bottomOffset + 100,
         opacity,
       }]}
       pointerEvents="none"

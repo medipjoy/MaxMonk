@@ -7,13 +7,13 @@ import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
 import { fontScale } from '../clearday/scale';
 import { NavCtx } from '../clearday/ClarityApp';
-import { ReorderHandle } from '../components/ReorderHandle';
+import { Quadrant } from '../clearday/types';
+import { CheckIcon } from '../components/ActionIcons';
+import { LongPressReorderRow } from '../components/LongPressReorderRow';
 
 interface Props { tokens: ThemeTokens; fontChoice: string; }
 
 const Q_ORDER = ['Q1', 'Q2', 'Q3', 'Q4'];
-const Q_LABEL: Record<string, string> = { Q1: 'DO NOW · Q1', Q2: 'SCHEDULE · Q2', Q3: 'DELEGATE · Q3', Q4: 'ELIMINATE · Q4' };
-
 function qColor(q: string, tokens: ThemeTokens) {
   switch (q) { case 'Q1': return tokens.q1; case 'Q2': return tokens.q2; case 'Q3': return tokens.q3; default: return tokens.q4; }
 }
@@ -24,6 +24,7 @@ export function ActiveScreen({ tokens, fontChoice }: Props) {
   const nav = useContext(NavCtx);
   const { agendas, toggleHold, archiveAgenda, completeAgenda, reorderActiveAgenda } = useClearDayStore();
   const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
+  const quadrantLabels = useClearDayStore(s => s.config.quadrantLabels);
 
   const active = agendas.filter(a => a.status === 'active');
   const grouped: Record<string, typeof active> = {};
@@ -31,6 +32,7 @@ export function ActiveScreen({ tokens, fontChoice }: Props) {
     grouped[q] = [...active.filter(a => a.quadrant === q)]
       .sort((a, b) => (a.listOrder ?? 0) - (b.listOrder ?? 0) || a.createdAt - b.createdAt);
   });
+  const flatActive = Q_ORDER.flatMap((q) => grouped[q]);
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top },
@@ -91,32 +93,49 @@ export function ActiveScreen({ tokens, fontChoice }: Props) {
             return (
               <View key={q}>
                 <View style={s.sectionHeader}>
-                  <Text style={s.sectionLabel}>{Q_LABEL[q]}</Text>
+                  <Text style={s.sectionLabel}>{`${quadrantLabels[q as Quadrant].toUpperCase()} · ${q}`}</Text>
                 </View>
                 {items.map(agenda => (
-                  <TouchableOpacity key={agenda.id} style={s.row} onPress={() => { nav.setBubbleActionId(agenda.id); nav.openPanel('bubbleAction'); }}>
-                    <View style={[s.dot, { backgroundColor: qColor(q, tokens) }]} />
-                    <Text style={s.rowText} numberOfLines={1}>{agenda.text}</Text>
-                    <View style={s.rowBtns}>
-                      <TouchableOpacity style={s.rowBtn} onPress={async () => { await completeAgenda(agenda.id); nav.showToast('Done'); }}>
-                        <Text style={[s.rowBtnText, { color: tokens.q2, fontSize: fontScale(13, fontSizeMultiplier) }]}>✓</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={s.rowBtn} onPress={async () => { await toggleHold(agenda.id); nav.showToast('On Hold'); }}>
-                        <Text style={s.rowBtnText}>–</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={s.rowBtn} onPress={async () => { await archiveAgenda(agenda.id); nav.showToast('Archived'); }}>
-                        <Text style={s.rowBtnText}>↓</Text>
-                      </TouchableOpacity>
-                      <ReorderHandle
-                        color={tokens.textGhost}
-                        onMoveBy={(delta) => {
-                          const currentIndex = items.findIndex((item) => item.id === agenda.id);
-                          if (currentIndex < 0) return;
-                          void reorderActiveAgenda(agenda.id, currentIndex + delta);
-                        }}
-                      />
-                    </View>
-                  </TouchableOpacity>
+                  <LongPressReorderRow
+                    key={agenda.id}
+                    borderColor={tokens.border}
+                    onPress={() => { nav.setBubbleActionId(agenda.id); nav.openPanel('bubbleAction'); }}
+                    onMoveBy={(delta) => {
+                      const currentIndex = flatActive.findIndex((item) => item.id === agenda.id);
+                      if (currentIndex < 0) return;
+                      const targetIndex = Math.max(0, Math.min(flatActive.length - 1, currentIndex + delta));
+                      const targetAgenda = flatActive[targetIndex];
+                      const targetQuadrant = targetAgenda?.quadrant ?? agenda.quadrant;
+                      const sameQuadrantItems = flatActive.filter((item) => item.id !== agenda.id && item.quadrant === targetQuadrant);
+                      const targetGroupIndex = Math.max(0, Math.min(
+                        sameQuadrantItems.length,
+                        flatActive
+                          .slice(0, targetIndex + 1)
+                          .filter((item) => item.id !== agenda.id && item.quadrant === targetQuadrant)
+                          .length,
+                      ));
+                      void reorderActiveAgenda(agenda.id, targetQuadrant as Quadrant, targetGroupIndex);
+                    }}
+                    content={
+                      <>
+                        <View style={[s.dot, { backgroundColor: qColor(q, tokens) }]} />
+                        <Text style={s.rowText} numberOfLines={1}>{agenda.text}</Text>
+                      </>
+                    }
+                    actions={
+                      <View style={s.rowBtns}>
+                        <TouchableOpacity style={s.rowBtn} onPress={async () => { await completeAgenda(agenda.id); nav.showToast('Marked Completed'); }}>
+                          <CheckIcon color={tokens.q2} size={14} />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={s.rowBtn} onPress={async () => { await toggleHold(agenda.id); nav.showToast('On Hold'); }}>
+                          <Text style={s.rowBtnText}>–</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={s.rowBtn} onPress={async () => { await archiveAgenda(agenda.id); nav.showToast('Archived'); }}>
+                          <Text style={s.rowBtnText}>↓</Text>
+                        </TouchableOpacity>
+                      </View>
+                    }
+                  />
                 ))}
               </View>
             );

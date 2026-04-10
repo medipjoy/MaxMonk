@@ -7,7 +7,7 @@ import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
 import { moderateScale, fontScale } from '../clearday/scale';
 import { NavCtx } from '../clearday/ClarityApp';
-import { ReorderHandle } from '../components/ReorderHandle';
+import { LongPressReorderRow } from '../components/LongPressReorderRow';
 
 interface Props { tokens: ThemeTokens; fontChoice: string; }
 
@@ -60,26 +60,32 @@ export function HoldScreen({ tokens, fontChoice }: Props) {
       ) : (
         <ScrollView style={s.scroll}>
           {onHold.map(agenda => (
-            <TouchableOpacity key={agenda.id} style={s.row} onPress={() => { nav.setBubbleActionId(agenda.id); nav.openPanel('bubbleAction'); }}>
-              <View style={[s.dot, { backgroundColor: qColor(agenda.quadrant, tokens) }]} />
-              <Text style={s.rowText} numberOfLines={1}>{agenda.text}</Text>
-              <View style={s.rowBtns}>
-                <TouchableOpacity style={s.rowBtn} onPress={async () => { await toggleHold(agenda.id); nav.showToast('Resumed'); }}>
-                  <Text style={[s.rowBtnText, { color: tokens.accent, fontSize: fontScale(16.1, fontSizeMultiplier) }]}>+</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.rowBtn} onPress={async () => { await archiveAgenda(agenda.id); nav.showToast('Archived'); }}>
-                  <Text style={s.rowBtnText}>↓</Text>
-                </TouchableOpacity>
-                <ReorderHandle
-                  color={tokens.textGhost}
-                  onMoveBy={(delta) => {
-                    const currentIndex = onHold.findIndex((item) => item.id === agenda.id);
-                    if (currentIndex < 0) return;
-                    void reorderHoldAgenda(agenda.id, currentIndex + delta);
-                  }}
-                />
-              </View>
-            </TouchableOpacity>
+            <LongPressReorderRow
+              key={agenda.id}
+              borderColor={tokens.border}
+              onPress={() => { nav.setBubbleActionId(agenda.id); nav.openPanel('bubbleAction'); }}
+              onMoveBy={(delta) => {
+                const currentIndex = onHold.findIndex((item) => item.id === agenda.id);
+                if (currentIndex < 0) return;
+                void reorderHoldAgenda(agenda.id, currentIndex + delta);
+              }}
+              content={
+                <>
+                  <View style={[s.dot, { backgroundColor: qColor(agenda.quadrant, tokens) }]} />
+                  <Text style={s.rowText} numberOfLines={1}>{agenda.text}</Text>
+                </>
+              }
+              actions={
+                <View style={s.rowBtns}>
+                  <TouchableOpacity style={s.rowBtn} onPress={async () => { await toggleHold(agenda.id); nav.showToast('Resumed'); }}>
+                    <Text style={[s.rowBtnText, { color: tokens.accent, fontSize: fontScale(16.1, fontSizeMultiplier) }]}>+</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={s.rowBtn} onPress={async () => { await archiveAgenda(agenda.id); nav.showToast('Archived'); }}>
+                    <Text style={s.rowBtnText}>↓</Text>
+                  </TouchableOpacity>
+                </View>
+              }
+            />
           ))}
         </ScrollView>
       )}

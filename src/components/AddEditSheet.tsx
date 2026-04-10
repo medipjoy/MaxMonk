@@ -10,24 +10,17 @@ import { useClearDayStore } from '../clearday/store';
 import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
 import { moderateScale, fontScale } from '../clearday/scale';
-import { posFromSliders, qFromPos } from '../clearday/helpers';
+import { posFromSliders, qFromPos, slidersFromPos } from '../clearday/helpers';
 import { NavCtx, AddSheetPreset } from '../clearday/ClarityApp';
+import { Quadrant } from '../clearday/types';
+import { CheckIcon } from './ActionIcons';
 
 const EFFORT_LABELS: Record<number, string> = { 1: 'Minimal', 2: 'Light', 3: 'Moderate', 4: 'Substantial', 5: 'Committed', 6: 'Extended', 7: 'Total' };
 const EFFORT_TIME: Record<number, string> = { 1: 'quick', 2: 'short', 3: 'medium', 4: 'medium', 5: 'deep', 6: 'deep', 7: 'deep' };
 const EFFORT_RADII: Record<string, number> = { quick: 20, short: 29, medium: 38, deep: 50 };
 function getRadius(time: string) { return EFFORT_RADII[time] ?? 29; }
-const Q_LABEL: Record<string, string> = { Q1: 'Do Now', Q2: 'Schedule', Q3: 'Delegate', Q4: 'Eliminate' };
 
-function sliderFromCx(cx?: number): number {
-  if (typeof cx !== 'number') return 50;
-  return Math.max(5, Math.min(95, Math.round(((cx - 0.05) / 0.9) * 100)));
-}
-
-function sliderFromCy(cy?: number): number {
-  if (typeof cy !== 'number') return 50;
-  return Math.max(5, Math.min(95, Math.round(100 - (((cy - 0.05) / 0.9) * 100))));
-}
+// Reverted custom slider to native Slider for stability
 
 function effortLevelFromTime(time?: string): number {
   if (time === 'quick') return 1;
@@ -62,11 +55,11 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
   const [title, setTitle] = useState(preset?.defaultText ?? existingAgenda?.text ?? '');
   const [urgency, setUrgency] = useState(
     preset?.urgency != null ? preset.urgency :
-    sliderFromCx(existingAgenda?.cx)
+    existingAgenda?.cx != null && existingAgenda?.cy != null ? slidersFromPos(existingAgenda.cx, existingAgenda.cy).urgency : 50
   );
   const [importance, setImportance] = useState(
     preset?.importance != null ? preset.importance :
-    sliderFromCy(existingAgenda?.cy)
+    existingAgenda?.cx != null && existingAgenda?.cy != null ? slidersFromPos(existingAgenda.cx, existingAgenda.cy).importance : 50
   );
   const [effort, setEffort] = useState(3);
   const [selectedTag, setSelectedTag] = useState(
@@ -87,11 +80,10 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
 
   useEffect(() => {
     if (existingAgenda) {
-      const nextUrgency = sliderFromCx(existingAgenda.cx);
-      const nextImportance = sliderFromCy(existingAgenda.cy);
+      const nextSliders = slidersFromPos(existingAgenda.cx, existingAgenda.cy);
       setTitle(existingAgenda.text);
-      setUrgency(nextUrgency);
-      setImportance(nextImportance);
+      setUrgency(nextSliders.urgency);
+      setImportance(nextSliders.importance);
       setEffort(effortLevelFromTime(existingAgenda.time));
       setSelectedTag(existingAgenda.domain);
       setIsMIT(mit === existingAgenda.text);
@@ -121,7 +113,12 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
 
   const { cx, cy } = posFromSliders(urgency, importance);
   const quadrant = qFromPos(cx, cy);
+  const quadrantLabels = config.quadrantLabels;
+  const matrixStyle = config.matrixStyle;
   const quadColor = qColor(quadrant, tokens);
+  const sheetTone = matrixStyle === 'paper' ? tokens.surface2 : tokens.surface;
+  const sliderActive = matrixStyle === 'editorial' ? tokens.text : tokens.accent;
+  const sliderInactive = matrixStyle === 'paper' ? tokens.borderMid : tokens.border;
 
   const canSave = title.trim().length > 0;
 
@@ -137,17 +134,17 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
         if (isMIT) await useClearDayStore.getState().setMit(agenda.text);
         if (preset?.addToHold) await useClearDayStore.getState().toggleHold(agenda.id);
       }
-      onSave(preset?.addToHold ? 'Added to Hold' : 'Added to ' + Q_LABEL[quadrant]);
+      onSave(preset?.addToHold ? 'Added to Hold' : 'Added to ' + quadrantLabels[quadrant as Quadrant]);
     }
   };
 
   const s = StyleSheet.create({
     overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: tokens.overlay, justifyContent: 'flex-end' },
-    sheet: { backgroundColor: tokens.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: keyboardVisible ? 2 : insets.bottom + 8, maxHeight: '64%' },
+    sheet: { backgroundColor: sheetTone, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: keyboardVisible ? 0 : insets.bottom + 8, maxHeight: '64%' },
     handleArea: { width: '100%', alignItems: 'center', paddingTop: 8, paddingBottom: 8 },
     handle: { width: 36, height: 3, backgroundColor: tokens.border, borderRadius: 2 },
     scroll: { paddingHorizontal: 16 },
-    titleInput: { borderWidth: 0.5, borderColor: tokens.borderMid, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: tokens.surface2, fontFamily: fonts.serifItalic, fontSize: fontScale(14, fontSizeMultiplier), color: tokens.text, marginBottom: 8 },
+    titleInput: { borderWidth: 0.5, borderColor: tokens.borderMid, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: matrixStyle === 'paper' ? tokens.surface : tokens.surface2, fontFamily: fonts.serifItalic, fontSize: fontScale(14, fontSizeMultiplier), color: tokens.text, marginBottom: 8 },
     mitRow: { flexDirection: 'row', alignItems: 'center', height: 36, marginBottom: 8, gap: 8 },
     mitLabel: { fontFamily: fonts.serifItalic, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.textGhost },
     sliderLabel: { fontFamily: fonts.sansMedium, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.textMuted, textTransform: 'uppercase', letterSpacing: 0.9, marginBottom: 2 },
@@ -159,7 +156,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
     tagText: { fontFamily: fonts.serif, fontSize: fontScale(11, fontSizeMultiplier) },
     preview: { flexDirection: 'row', gap: 6, marginBottom: 12 },
     previewLabel: { fontFamily: fonts.serifItalic, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.accent, alignSelf: 'center' },
-    submitBtn: { marginHorizontal: 16, height: 48, borderRadius: 6, justifyContent: 'center', alignItems: 'center', marginTop: 2, marginBottom: keyboardVisible ? 2 : 0 },
+    submitBtn: { marginHorizontal: 16, height: 48, borderRadius: 6, justifyContent: 'center', alignItems: 'center', marginTop: 2, marginBottom: keyboardVisible ? 0 : 0 },
     submitText: { fontFamily: fonts.serif, fontSize: fontScale(14, fontSizeMultiplier), color: tokens.surface },
     quickActions: { flexDirection: 'row', gap: 8, marginBottom: 12 },
     quickBtn: {
@@ -255,7 +252,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
                 {/* Urgency */}
                 <Text style={s.sliderLabel}>Urgency</Text>
                 <View style={s.sliderRow}>
-                  <Slider key={`urgency-${sliderKey}`} style={{ flex: 1 }} minimumValue={5} maximumValue={95} step={1} value={urgency} onValueChange={(v: number) => setUrgency(Math.round(v))} minimumTrackTintColor={tokens.accent} maximumTrackTintColor={tokens.border} thumbTintColor={tokens.accent} />
+                    <Slider key={`urgency-${sliderKey}`} style={{ flex: 1 }} minimumValue={5} maximumValue={95} step={1} value={urgency} onValueChange={(v: number) => setUrgency(Math.round(v))} minimumTrackTintColor={sliderActive} maximumTrackTintColor={sliderInactive} thumbTintColor={sliderActive} />
                   <Text style={s.sliderValue}>{urgency}</Text>
                 </View>
                 <Text style={s.sliderHelp}>Urgent = delay creates real consequences</Text>
@@ -263,7 +260,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
                 {/* Importance */}
                 <Text style={s.sliderLabel}>Importance</Text>
                 <View style={s.sliderRow}>
-                  <Slider key={`importance-${sliderKey}`} style={{ flex: 1 }} minimumValue={5} maximumValue={95} step={1} value={importance} onValueChange={(v: number) => setImportance(Math.round(v))} minimumTrackTintColor={tokens.accent} maximumTrackTintColor={tokens.border} thumbTintColor={tokens.accent} />
+                    <Slider key={`importance-${sliderKey}`} style={{ flex: 1 }} minimumValue={5} maximumValue={95} step={1} value={importance} onValueChange={(v: number) => setImportance(Math.round(v))} minimumTrackTintColor={sliderActive} maximumTrackTintColor={sliderInactive} thumbTintColor={sliderActive} />
                   <Text style={s.sliderValue}>{importance}</Text>
                 </View>
                 <Text style={s.sliderHelp}>Important = advances your goals, not someone else's urgency</Text>
@@ -290,15 +287,15 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
                 {/* Quadrant preview */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: existingAgenda ? 10 : 16 }}>
                   <QuadPreview />
-                  <Text style={s.previewLabel}>→ {Q_LABEL[quadrant]} · {quadrant}</Text>
+                  <Text style={s.previewLabel}>→ {quadrantLabels[quadrant as Quadrant]} · {quadrant}</Text>
                 </View>
 
                 {/* Quick actions (edit mode only) */}
                 {existingAgenda && (
                   <View style={s.quickActions}>
-                    <TouchableOpacity style={s.quickBtn} onPress={async () => { await completeAgenda(existingAgenda.id); onSave('Done'); }}>
-                      <Text style={[s.quickBtnText, { color: tokens.q2 }]}>✓</Text>
-                      <Text style={s.quickBtnText}>Done</Text>
+                    <TouchableOpacity style={s.quickBtn} onPress={async () => { await completeAgenda(existingAgenda.id); onSave('Marked Completed'); }}>
+                      <CheckIcon color={tokens.q2} size={14} />
+                      <Text style={s.quickBtnText}>Complete</Text>
                     </TouchableOpacity>
                     {existingAgenda.status === 'active' && (
                       <TouchableOpacity style={s.quickBtn} onPress={async () => {
@@ -324,10 +321,10 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
                 disabled={!canSave}
               >
                 <Text style={s.submitText}>
-                  {existingAgenda ? 'Save Changes' : `Place in ${Q_LABEL[quadrant]}`}
+                  {existingAgenda ? 'Save Changes' : `Place in ${quadrantLabels[quadrant as Quadrant]}`}
                 </Text>
               </TouchableOpacity>
-              {keyboardVisible && <View style={{ height: 10, backgroundColor: tokens.surface }} />}
+              {keyboardVisible && <View style={{ height: 16, backgroundColor: sheetTone }} />}
       </View>
     </KeyboardAvoidingView>
   );

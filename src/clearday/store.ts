@@ -41,6 +41,7 @@ interface ClearDayState {
   setHoldExpiryDefault: (value: ExpiryDefault) => Promise<void>;
   setTags: (tags: string[]) => Promise<void>;
   setQuadrantLabel: (quadrant: Quadrant, label: string) => Promise<boolean>;
+  setQuadrantLabels: (labels: Record<Quadrant, string>) => Promise<void>;
   addTag: (tag: string) => Promise<boolean>;
   removeTag: (tag: string) => Promise<boolean>;
   renameTag: (oldTag: string, newTag: string) => Promise<boolean>;
@@ -71,7 +72,7 @@ interface ClearDayState {
   bulkHold: (ids: string[]) => Promise<void>;
   bulkResume: (ids: string[]) => Promise<void>;
   bulkDelete: (ids: string[]) => Promise<void>;
-  reorderActiveAgenda: (id: string, nextIndex: number) => Promise<void>;
+  reorderActiveAgenda: (id: string, targetQuadrant: Quadrant, nextIndex: number) => Promise<void>;
   reorderHoldAgenda: (id: string, nextIndex: number) => Promise<void>;
 }
 
@@ -213,6 +214,13 @@ function reorderAgendas(
   return agendas.map((agenda) => byId.get(agenda.id) ?? agenda);
 }
 
+function quadrantAnchorPos(quadrant: Quadrant): { cx: number; cy: number } {
+  if (quadrant === 'Q1') return posFromSliders(75, 75);
+  if (quadrant === 'Q2') return posFromSliders(25, 75);
+  if (quadrant === 'Q3') return posFromSliders(75, 25);
+  return posFromSliders(25, 25);
+}
+
 export const useClearDayStore = create<ClearDayState>((set, get) => ({
   ready: false,
   agendas: [],
@@ -330,6 +338,15 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     set({ config: nextCfg });
     await saveConfig(nextCfg);
     return true;
+  },
+
+  setQuadrantLabels: async (labels: Record<Quadrant, string>) => {
+    const nextCfg = {
+      ...get().config,
+      quadrantLabels: normalizeQuadrantLabels(labels),
+    };
+    set({ config: nextCfg });
+    await saveConfig(nextCfg);
   },
 
   addTag: async (tag: string) => {
@@ -464,15 +481,28 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     await saveAgendas(agendas);
   },
 
-  reorderActiveAgenda: async (id: string, nextIndex: number) => {
+  reorderActiveAgenda: async (id: string, targetQuadrant: Quadrant, nextIndex: number) => {
     const agenda = get().agendas.find((item) => item.id === id);
     if (!agenda || agenda.status !== 'active') return;
-    const agendas = reorderAgendas(
-      get().agendas,
-      (item) => item.status === 'active' && item.quadrant === agenda.quadrant,
-      id,
-      nextIndex,
-    );
+    const all = get().agendas;
+    const targetGroup = sortByListOrder(all.filter((item) => item.status === 'active' && item.quadrant === targetQuadrant && item.id !== id));
+    const targetIndex = clamp(nextIndex, 0, targetGroup.length);
+    const movingAgenda = targetQuadrant === agenda.quadrant
+      ? { ...agenda }
+      : { ...agenda, quadrant: targetQuadrant, ...quadrantAnchorPos(targetQuadrant) };
+
+    const reorderedTarget = [...targetGroup];
+    reorderedTarget.splice(targetIndex, 0, movingAgenda);
+    const targetWithOrders = assignOrders(reorderedTarget);
+    const targetMap = new Map(targetWithOrders.map((item) => [item.id, item]));
+
+    const agendas = all.map((item) => {
+      if (item.id === id) return targetMap.get(id) ?? movingAgenda;
+      if (item.status === 'active' && item.quadrant === targetQuadrant) {
+        return targetMap.get(item.id) ?? item;
+      }
+      return item;
+    });
     set({ agendas });
     await saveAgendas(agendas);
   },
