@@ -34,8 +34,6 @@ export function BubbleActionSheet({ tokens, fontChoice, agendaId, onClose, onAct
 
   if (!agenda) return null;
 
-  const isOnHold = agenda.status === 'onhold';
-
   const s = StyleSheet.create({
     overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: tokens.overlay, justifyContent: 'flex-end' },
     sheet: { backgroundColor: tokens.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: insets.bottom + 8 },
@@ -52,7 +50,7 @@ export function BubbleActionSheet({ tokens, fontChoice, agendaId, onClose, onAct
   const rows = [
     { label: '◦  Done', color: tokens.q2, onPress: async () => { await completeAgenda(agendaId); onAction('Done'); } },
     { label: '✎  Edit', color: tokens.textMuted, onPress: () => onEdit(agendaId) },
-    { label: isOnHold ? '‹  Resume' : '–  Hold', color: tokens.textMuted, onPress: async () => { await toggleHold(agendaId); onAction(isOnHold ? 'Resumed' : 'On Hold'); } },
+    ...(agenda.status === 'active' ? [{ label: '–  Hold', color: tokens.textMuted, onPress: async () => { await toggleHold(agendaId); onAction('On Hold'); } }] : []),
     { label: '↓  Archive', color: tokens.textMuted, onPress: async () => { await archiveAgenda(agendaId); onAction('Archived'); } },
   ];
 

@@ -19,6 +19,14 @@ const EFFORT_RADII: Record<string, number> = { quick: 20, short: 29, medium: 38,
 function getRadius(time: string) { return EFFORT_RADII[time] ?? 29; }
 const Q_LABEL: Record<string, string> = { Q1: 'Do Now', Q2: 'Schedule', Q3: 'Delegate', Q4: 'Eliminate' };
 
+function effortLevelFromTime(time?: string): number {
+  if (time === 'quick') return 1;
+  if (time === 'short') return 2;
+  if (time === 'medium') return 3;
+  if (time === 'deep') return 5;
+  return 3;
+}
+
 function qColor(q: string, tokens: ThemeTokens) {
   switch (q) { case 'Q1': return tokens.q1; case 'Q2': return tokens.q2; case 'Q3': return tokens.q3; default: return tokens.q4; }
 }
@@ -56,6 +64,8 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
   );
   const [isMIT, setIsMIT] = useState(false);
   const [sliderKey, setSliderKey] = useState(0);
+  const [showScrollIndicator, setShowScrollIndicator] = useState(false);
+  const [scrollHeight, setScrollHeight] = useState(0);
 
   const dismissPan = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => true,
@@ -65,13 +75,27 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
   })).current;
 
   useEffect(() => {
-    if (preset) {
-      setUrgency(preset.urgency);
-      setImportance(preset.importance);
-      if (preset.defaultDomain) setSelectedTag(preset.defaultDomain);
-      setSliderKey(k => k + 1); // force slider remount so visual position matches value
+    if (existingAgenda) {
+      const nextUrgency = Math.round(existingAgenda.cx * 90 + 5);
+      const nextImportance = Math.round((1 - existingAgenda.cy) * 90 + 5);
+      setTitle(existingAgenda.text);
+      setUrgency(nextUrgency);
+      setImportance(nextImportance);
+      setEffort(effortLevelFromTime(existingAgenda.time));
+      setSelectedTag(existingAgenda.domain);
+      setIsMIT(mit === existingAgenda.text);
+      setSliderKey(k => k + 1);
+      return;
     }
-  }, [preset]);
+
+    setTitle(preset?.defaultText ?? '');
+    setUrgency(preset?.urgency ?? 50);
+    setImportance(preset?.importance ?? 50);
+    setEffort(3);
+    setSelectedTag(preset?.defaultDomain ?? config.tags[0]);
+    setIsMIT(false);
+    setSliderKey(k => k + 1);
+  }, [agendaId, existingAgenda, preset, config.tags, mit]);
 
   const { cx, cy } = posFromSliders(urgency, importance);
   const quadrant = qFromPos(cx, cy);
@@ -97,7 +121,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
 
   const s = StyleSheet.create({
     overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: tokens.overlay, justifyContent: 'flex-end' },
-    sheet: { backgroundColor: tokens.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: insets.bottom + 16, maxHeight: '85%' },
+    sheet: { backgroundColor: tokens.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: insets.bottom + 8, maxHeight: '64%' },
     handleArea: { width: '100%', alignItems: 'center', paddingTop: 8, paddingBottom: 8 },
     handle: { width: 36, height: 3, backgroundColor: tokens.border, borderRadius: 2 },
     scroll: { paddingHorizontal: 16 },
@@ -113,7 +137,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
     tagText: { fontFamily: fonts.serif, fontSize: fontScale(11, fontSizeMultiplier) },
     preview: { flexDirection: 'row', gap: 6, marginBottom: 12 },
     previewLabel: { fontFamily: fonts.serifItalic, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.accent, alignSelf: 'center' },
-    submitBtn: { marginHorizontal: 16, height: 48, borderRadius: 6, justifyContent: 'center', alignItems: 'center', marginTop: 4 },
+    submitBtn: { marginHorizontal: 16, height: 48, borderRadius: 6, justifyContent: 'center', alignItems: 'center', marginTop: 2 },
     submitText: { fontFamily: fonts.serif, fontSize: fontScale(14, fontSizeMultiplier), color: tokens.surface },
     quickActions: { flexDirection: 'row', gap: 8, marginBottom: 12 },
     quickBtn: {
@@ -167,13 +191,25 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
       style={s.overlay}
     >
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={{ flex: 1 }} />
+        <View style={{ flex: 1 }} hitSlop={{ top: 0, bottom: 24, left: 0, right: 0 }} />
       </TouchableWithoutFeedback>
       <View style={s.sheet}>
         <View style={s.handleArea} {...dismissPan.panHandlers}>
           <View style={s.handle} />
         </View>
-        <ScrollView style={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={s.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={showScrollIndicator}
+          persistentScrollbar={showScrollIndicator}
+          onLayout={(e) => {
+            const nextHeight = e.nativeEvent.layout.height;
+            setScrollHeight(nextHeight);
+          }}
+          onContentSizeChange={(_, contentHeight) => {
+            setShowScrollIndicator(contentHeight > scrollHeight + 8);
+          }}
+        >
                 {/* Title */}
                 <TextInput
                   style={s.titleInput}
@@ -241,13 +277,15 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
                       <Text style={[s.quickBtnText, { color: tokens.q2 }]}>✓</Text>
                       <Text style={s.quickBtnText}>Done</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={s.quickBtn} onPress={async () => {
-                      await toggleHold(existingAgenda.id);
-                      onSave(existingAgenda.status === 'onhold' ? 'Resumed' : 'On Hold');
-                    }}>
-                      <Text style={s.quickBtnText}>–</Text>
-                      <Text style={s.quickBtnText}>{existingAgenda.status === 'onhold' ? 'Resume' : 'Hold'}</Text>
-                    </TouchableOpacity>
+                    {existingAgenda.status === 'active' && (
+                      <TouchableOpacity style={s.quickBtn} onPress={async () => {
+                        await toggleHold(existingAgenda.id);
+                        onSave('On Hold');
+                      }}>
+                        <Text style={s.quickBtnText}>–</Text>
+                        <Text style={s.quickBtnText}>Hold</Text>
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity style={s.quickBtn} onPress={async () => { await archiveAgenda(existingAgenda.id); onSave('Archived'); }}>
                       <Text style={s.quickBtnText}>↓</Text>
                       <Text style={s.quickBtnText}>Archive</Text>

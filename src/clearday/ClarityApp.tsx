@@ -251,7 +251,6 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
 
 // --- Floating Pill Icons ---
 function PillIcons({ screen, tokens, goTo, openPanel, fsm }: { screen: Screen; tokens: any; goTo: (s: Screen) => void; openPanel: (p: Panel) => void; fsm: number }) {
-  const isMatrix = screen === 'matrix';
   const isActive = screen === 'active';
 
   const iconColor = (active: boolean) => active ? tokens.accent : tokens.textGhost;
@@ -260,9 +259,9 @@ function PillIcons({ screen, tokens, goTo, openPanel, fsm }: { screen: Screen; t
 
   return (
     <>
-      {/* Crosshair — Matrix */}
-      <PillButton onPress={() => goTo('matrix')} active={isMatrix} indicatorColor={indicatorColor} fsm={fsm}>
-        <CrosshairIcon color={iconColor(isMatrix)} size={iconSize} />
+      {/* Plus — Add */}
+      <PillButton onPress={() => openPanel('add')} active={false} indicatorColor={indicatorColor} fsm={fsm}>
+        <PlusIcon color={tokens.accent} size={iconSize} />
       </PillButton>
 
       {/* List — Active */}
@@ -273,11 +272,6 @@ function PillIcons({ screen, tokens, goTo, openPanel, fsm }: { screen: Screen; t
       {/* Dots — More */}
       <PillButton onPress={() => openPanel('more')} active={false} indicatorColor={indicatorColor} fsm={fsm}>
         <DotsIcon color={iconColor(false)} size={iconSize} />
-      </PillButton>
-
-      {/* Plus — Add */}
-      <PillButton onPress={() => openPanel('add')} active={false} indicatorColor={indicatorColor} fsm={fsm}>
-        <PlusIcon color={tokens.accent} size={iconSize} />
       </PillButton>
     </>
   );

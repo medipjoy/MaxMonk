@@ -1,54 +1,67 @@
 # MaxMonk / Clarity — Handoff Context
 
-## Project
-Cross-platform Eisenhower Matrix task manager (iOS/Android/Web). React Native + Expo 54, TypeScript strict, Zustand store, AsyncStorage. No react-navigation — custom NavCtx in `src/clearday/ClarityApp.tsx`.
+## Project Snapshot
 
-## Key architecture
-- `src/clearday/ClarityApp.tsx` — root, NavCtx, pill, Screen/Panel state
-- `src/clearday/store.ts` — all business logic (single Zustand store)
-- `src/clearday/types.ts` — all types, AppConfig, DEFAULT_TAGS
-- `src/clearday/theme.ts` — light/dark tokens (passed as props, never imported in screens)
-- `src/screens/MatrixScreen.tsx` — main canvas, bubbles, filter chips
-- `src/components/AddEditSheet.tsx` — add/edit bottom sheet
-- `src/screens/ActiveScreen.tsx`, `HoldScreen.tsx`, `VaultScreen.tsx`, `SettingsScreen.tsx`
+Cross-platform Eisenhower Matrix task manager for iOS, Android, and Web. Stack: React Native + Expo 54, TypeScript strict, Zustand, AsyncStorage.
 
-## What was done in this session (in order)
+The live app shell is centered on [src/clearday/ClarityApp.tsx](/workspaces/MaxMonk/src/clearday/ClarityApp.tsx), which owns current screen/panel navigation through `NavCtx`. There is no `@react-navigation`.
 
-### Batch 5
-1. **Vault retention** — options changed to `[15d, 60d, Never]`, default = Never (0). Label "Auto-clears after" → "Delete after".
-2. **Pill per-style appearance** — `getPillAppearance()` returns different bg/border per matrixStyle (tinted/editorial/paper). Icon strokeWidth 1.5 → 1.75.
-3. **Agenda Tags** — `TAG_MAX_LENGTH` 12→3, `DEFAULT_TAGS` → `['Pro','Per']`. `normalizeTagList` now truncates+capitalizes (migrates old "Professional"/"Personal" on bootstrap). Settings has "Agenda Tags" section: tap-to-edit inline TextInput (3-char, auto-cap), delete (if >1 tag), "+ Add tag" (max 4). Guidance: "Short codes only — e.g. Per personal, Lrn learning, Wk work, Hlt health."
+## Primary Files To Read First
 
-### Full-screen graph layout
-4. **Filter chip gap** 4→2px.
-5. **Canvas full-width** — removed all padding from canvas style. SVG offsets fixed (`top:0,left:0`), `svgW=W`, `svgH=H`, `innerW/H` no longer subtract 16.
-6. **Stronger bubbles** — border `'B8'`→`'BF'` (72%→75%). Wash opacities increased ~+0.02–0.03 in both light and dark tokens.
+- [src/clearday/ClarityApp.tsx](/workspaces/MaxMonk/src/clearday/ClarityApp.tsx) — app shell, navigation, pill/sidebar, overlays
+- [src/clearday/store.ts](/workspaces/MaxMonk/src/clearday/store.ts) — main Zustand store and business logic
+- [src/clearday/types.ts](/workspaces/MaxMonk/src/clearday/types.ts) — config types and constants
+- [src/clearday/storage.ts](/workspaces/MaxMonk/src/clearday/storage.ts) — persistence/bootstrap
+- [src/screens/MatrixScreen.tsx](/workspaces/MaxMonk/src/screens/MatrixScreen.tsx) — matrix canvas and interaction model
+- [src/components/AddEditSheet.tsx](/workspaces/MaxMonk/src/components/AddEditSheet.tsx) — add/edit workflow
+- [src/screens/ActiveScreen.tsx](/workspaces/MaxMonk/src/screens/ActiveScreen.tsx)
+- [src/screens/HoldScreen.tsx](/workspaces/MaxMonk/src/screens/HoldScreen.tsx)
+- [src/screens/VaultScreen.tsx](/workspaces/MaxMonk/src/screens/VaultScreen.tsx)
+- [src/screens/SettingsScreen.tsx](/workspaces/MaxMonk/src/screens/SettingsScreen.tsx)
+- [src/screens/CompletedScreen.tsx](/workspaces/MaxMonk/src/screens/CompletedScreen.tsx)
 
-### Quadrant label fixes
-7. **Paper style** — replaced edge axis labels with center watermarks at same x/y as tinted (`svgW/2±4`, `svgH/2-6/+14`), using `tokens.textGhost` opacity 0.45. Kept "urgency →" horizontal. Added "importance" label **vertical** on upper y-axis via `rotation="-90"`.
-8. **Editorial opacity** 0.15→0.17 (+15%).
+## Context Captured From The Previous Claude Code Chat
 
-### Misc fixes & features
-9. **QuadPreview bubble** scales with effort slider: `previewR = max(3, round(fullRadius × 80/360))`.
-10. **Slider visual bug on preset** — `sliderKey` state bumped in preset `useEffect`; urgency + importance sliders keyed to it so they remount on canvas-tap preset.
-11. **Pill + button** — 4th `PillButton` with `PlusIcon` SVG calls `openPanel('add')`.
-12. **Hold screen + Add** — `addBar` identical to Active screen. `AddSheetPreset.addToHold?: boolean` flag; when set, `toggleHold` called immediately after `addAgenda`. New agendas go straight to hold status.
-13. **Hold screen resume button** — `‹` → `+` (accent colour). Calls `toggleHold` (resumes to active).
-14. **Vault screen** — `⊕` removed from left. Right buttons now: `+` (restore to active) · `↑` (restore to hold) · `✕` (delete).
+The prior session made the following product and UI changes:
 
-## Current state of key constants
-```ts
-// types.ts
-DEFAULT_TAGS = ['Pro', 'Per']
-TAG_MAX_LENGTH = 3
-// AppConfig.vaultRetentionDays default = 0 (Never)
-```
+1. Vault retention options were changed to `[15d, 60d, Never]`, with default `Never` (`0`), and the label changed from "Auto-clears after" to "Delete after".
+2. Floating pill appearance was split by `matrixStyle`, and icon stroke width was increased from `1.5` to `1.75`.
+3. Agenda tags were tightened: `TAG_MAX_LENGTH` changed from `12` to `3`, `DEFAULT_TAGS` changed to `['Pro', 'Per']`, and tag normalization now truncates and capitalizes values. Settings gained inline tag editing, deletion, and add-tag controls.
+4. Matrix filter chip gap was reduced from `4px` to `2px`.
+5. The matrix canvas was made full-width by removing canvas padding and fixing SVG sizing/offsets.
+6. Bubble visuals were strengthened by increasing border opacity and wash opacity in both light and dark themes.
+7. Paper style quadrant labeling was changed from edge labels to center watermark labels, while keeping a horizontal urgency label and adding a vertical importance label.
+8. Editorial axis label opacity increased from `0.15` to `0.17`.
+9. The `QuadPreview` bubble was changed to scale with the effort slider.
+10. A slider remount fix was added so urgency/importance sliders refresh correctly after canvas preset taps.
+11. A fourth floating pill action was added for opening the add sheet.
+12. Hold screen gained an add flow parallel to Active, using `AddSheetPreset.addToHold` so new items can be created directly in hold.
+13. Hold screen resume action changed from `‹` to `+` and resumes by calling `toggleHold`.
+14. Vault actions were simplified so the right-side actions are restore to active (`+`), restore to hold (`↑`), and delete (`✕`).
 
-## TypeScript
-`npx tsc --noEmit` passes clean after all changes.
+## Current Verified State
 
-## Removed features (do NOT re-add)
-- Sparks / SparksSheet — deleted
-- ReflectionScreen — deleted  
-- aiStub.ts — deleted
-- `Panel` has no `'sparks'`; `Screen` has no `'reflect'`
+- `DEFAULT_TAGS = ['Pro', 'Per']`
+- `TAG_MAX_LENGTH = 3`
+- `vaultRetentionDays` defaults to `0` in persistence/store config
+- `CompletedScreen` exists and is wired into the current app shell
+- `aiStub.ts` is not present
+- `ReflectionScreen` and `SparksSheet` are not present
+
+## Important Caveat: Stale References Still Exist
+
+The previous handoff said removed features should not be re-added, and that is directionally correct, but a few stale references still remain in the repo:
+
+- [src/clearday/navigation.ts](/workspaces/MaxMonk/src/clearday/navigation.ts) still mentions old panel names including `sparks` and `reflect`
+- [src/clearday/helpers.ts](/workspaces/MaxMonk/src/clearday/helpers.ts) still includes a `sparks` storage key
+- [src/docs/release-hardening-checklist.md](/workspaces/MaxMonk/src/docs/release-hardening-checklist.md) still mentions `sparks` in QA gates
+
+Use [src/clearday/ClarityApp.tsx](/workspaces/MaxMonk/src/clearday/ClarityApp.tsx) as the source of truth for active navigation and product surface.
+
+## Validation Status
+
+The previous Claude session reported that `npx tsc --noEmit` passed after those changes. This handoff update did not rerun TypeScript; it only verified file presence and current source references.
+
+## Missing Older Reference
+
+An older Claude guidance file referenced `MaxMonk_b1_McK_MB.md` as an authoritative spec, but that file was not present in the repository during this handoff refresh. If future work depends on that spec, verify its location first instead of assuming it still exists.
