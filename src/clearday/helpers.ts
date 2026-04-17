@@ -36,8 +36,8 @@ export function slidersFromPos(cx: number, cy: number): { urgency: number; impor
   const urgency = ((clamp(cx, 0.05, 0.95) - 0.05) / 0.9) * 100;
   const importance = 100 - ((clamp(cy, 0.05, 0.95) - 0.05) / 0.9) * 100;
   return {
-    urgency: Math.round(clamp(urgency, 5, 95)),
-    importance: Math.round(clamp(importance, 5, 95)),
+    urgency: Math.round(clamp(urgency, 0, 100)),
+    importance: Math.round(clamp(importance, 0, 100)),
   };
 }
 

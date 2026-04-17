@@ -10,7 +10,7 @@ import { useClearDayStore } from '../clearday/store';
 import { ThemeTokens } from '../clearday/theme';
 import { getFontSet } from '../clearday/fonts';
 import { moderateScale, fontScale } from '../clearday/scale';
-import { posFromSliders, qFromPos, slidersFromPos } from '../clearday/helpers';
+import { clamp, posFromSliders, qFromPos, slidersFromPos } from '../clearday/helpers';
 import { NavCtx, AddSheetPreset } from '../clearday/ClarityApp';
 import { Quadrant } from '../clearday/types';
 import { CheckIcon } from './ActionIcons';
@@ -20,7 +20,59 @@ const EFFORT_TIME: Record<number, string> = { 1: 'quick', 2: 'short', 3: 'medium
 const EFFORT_RADII: Record<string, number> = { quick: 20, short: 29, medium: 38, deep: 50 };
 function getRadius(time: string) { return EFFORT_RADII[time] ?? 29; }
 
-// Reverted custom slider to native Slider for stability
+function SheetSlider({
+  value,
+  onChange,
+  activeColor,
+  inactiveColor,
+  thumbColor,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  activeColor: string;
+  inactiveColor: string;
+  thumbColor: string;
+}) {
+  const [trackWidth, setTrackWidth] = useState(1);
+  const trackHeight = 6;
+  const thumbSize = 22;
+
+  const setFromX = (x: number) => {
+    if (!trackWidth) return;
+    const t = clamp(x / trackWidth, 0, 1);
+    onChange(Math.round(t * 100));
+  };
+
+  const fillW = (trackWidth * clamp(value, 0, 100)) / 100;
+  const thumbLeft = clamp(fillW - thumbSize / 2, 0, trackWidth - thumbSize);
+
+  return (
+    <View
+      style={{ flex: 1, height: 28, justifyContent: 'center' }}
+      onLayout={(e) => setTrackWidth(Math.max(1, Math.round(e.nativeEvent.layout.width)))}
+      onStartShouldSetResponder={() => true}
+      onResponderGrant={(e) => setFromX(e.nativeEvent.locationX)}
+      onResponderMove={(e) => setFromX(e.nativeEvent.locationX)}
+    >
+      <View style={{ height: trackHeight, borderRadius: trackHeight / 2, backgroundColor: inactiveColor, overflow: 'hidden' }}>
+        <View style={{ height: trackHeight, width: fillW, backgroundColor: activeColor }} />
+      </View>
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: thumbLeft,
+          width: thumbSize,
+          height: thumbSize,
+          borderRadius: thumbSize / 2,
+          backgroundColor: thumbColor,
+          borderWidth: 1,
+          borderColor: activeColor,
+        }}
+      />
+    </View>
+  );
+}
 
 function effortLevelFromTime(time?: string): number {
   if (time === 'quick') return 1;
@@ -66,7 +118,6 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
     existingAgenda?.domain ?? preset?.defaultDomain ?? config.tags[0]
   );
   const [isMIT, setIsMIT] = useState(false);
-  const [sliderKey, setSliderKey] = useState(0);
   const [showScrollIndicator, setShowScrollIndicator] = useState(false);
   const [scrollHeight, setScrollHeight] = useState(0);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -87,7 +138,6 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
       setEffort(effortLevelFromTime(existingAgenda.time));
       setSelectedTag(existingAgenda.domain);
       setIsMIT(mit === existingAgenda.text);
-      setSliderKey(k => k + 1);
       return;
     }
 
@@ -97,7 +147,6 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
     setEffort(3);
     setSelectedTag(preset?.defaultDomain ?? config.tags[0]);
     setIsMIT(false);
-    setSliderKey(k => k + 1);
   }, [agendaId, existingAgenda, preset, config.tags, mit]);
 
   useEffect(() => {
@@ -195,10 +244,10 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
         <Rect x={half} y={half} width={half} height={half} fill={tokens.q3Wash} />
         <Line x1={half} y1={0} x2={half} y2={S} stroke={tokens.axisLine} strokeWidth={0.75} />
         <Line x1={0} y1={half} x2={S} y2={half} stroke={tokens.axisLine} strokeWidth={0.75} />
-        <SvgText x={3} y={half - 3} fontSize={5} fill={tokens.q2} opacity={0.5} fontStyle="italic">Sch</SvgText>
-        <SvgText x={S - 3} y={half - 3} fontSize={5} fill={tokens.q1} opacity={0.5} textAnchor="end" fontStyle="italic">Now</SvgText>
-        <SvgText x={3} y={S - 3} fontSize={5} fill={tokens.q4} opacity={0.5} fontStyle="italic">Elim</SvgText>
-        <SvgText x={S - 3} y={S - 3} fontSize={5} fill={tokens.q3} opacity={0.5} textAnchor="end" fontStyle="italic">Del</SvgText>
+        <SvgText x={3} y={half - 3} fontSize={5} fill={tokens.q2} opacity={0.5} fontStyle="italic">{quadrantLabels.Q2.slice(0, 3)}</SvgText>
+        <SvgText x={S - 3} y={half - 3} fontSize={5} fill={tokens.q1} opacity={0.5} textAnchor="end" fontStyle="italic">{quadrantLabels.Q1.slice(0, 3)}</SvgText>
+        <SvgText x={3} y={S - 3} fontSize={5} fill={tokens.q4} opacity={0.5} fontStyle="italic">{quadrantLabels.Q4.slice(0, 3)}</SvgText>
+        <SvgText x={S - 3} y={S - 3} fontSize={5} fill={tokens.q3} opacity={0.5} textAnchor="end" fontStyle="italic">{quadrantLabels.Q3.slice(0, 3)}</SvgText>
         <Circle cx={dotX} cy={dotY} r={previewR} fill={quadColor} opacity={0.72} stroke={quadColor} strokeOpacity={0.75} strokeWidth={0.75} />
       </Svg>
     );
@@ -252,7 +301,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
                 {/* Urgency */}
                 <Text style={s.sliderLabel}>Urgency</Text>
                 <View style={s.sliderRow}>
-                    <Slider key={`urgency-${sliderKey}`} style={{ flex: 1 }} minimumValue={5} maximumValue={95} step={1} value={urgency} onValueChange={(v: number) => setUrgency(Math.round(v))} minimumTrackTintColor={sliderActive} maximumTrackTintColor={sliderInactive} thumbTintColor={sliderActive} />
+                  <SheetSlider value={urgency} onChange={setUrgency} activeColor={sliderActive} inactiveColor={sliderInactive} thumbColor={sliderActive} />
                   <Text style={s.sliderValue}>{urgency}</Text>
                 </View>
                 <Text style={s.sliderHelp}>Urgent = delay creates real consequences</Text>
@@ -260,7 +309,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
                 {/* Importance */}
                 <Text style={s.sliderLabel}>Importance</Text>
                 <View style={s.sliderRow}>
-                    <Slider key={`importance-${sliderKey}`} style={{ flex: 1 }} minimumValue={5} maximumValue={95} step={1} value={importance} onValueChange={(v: number) => setImportance(Math.round(v))} minimumTrackTintColor={sliderActive} maximumTrackTintColor={sliderInactive} thumbTintColor={sliderActive} />
+                  <SheetSlider value={importance} onChange={setImportance} activeColor={sliderActive} inactiveColor={sliderInactive} thumbColor={sliderActive} />
                   <Text style={s.sliderValue}>{importance}</Text>
                 </View>
                 <Text style={s.sliderHelp}>Important = advances your goals, not someone else's urgency</Text>

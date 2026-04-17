@@ -63,6 +63,8 @@ export function HoldScreen({ tokens, fontChoice }: Props) {
             <LongPressReorderRow
               key={agenda.id}
               borderColor={tokens.border}
+              backgroundColor="transparent"
+              dragBackgroundColor={tokens.surface2}
               onPress={() => { nav.setBubbleActionId(agenda.id); nav.openPanel('bubbleAction'); }}
               onMoveBy={(delta) => {
                 const currentIndex = onHold.findIndex((item) => item.id === agenda.id);

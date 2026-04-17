@@ -12,7 +12,7 @@ import { getFontSet } from '../clearday/fonts';
 import { moderateScale, fontScale } from '../clearday/scale';
 import { NavCtx } from '../clearday/ClarityApp';
 import { MITStrip } from '../components/MITStrip';
-import { Agenda, MatrixStyle } from '../clearday/types';
+import { Agenda, AgendaTime, MatrixStyle } from '../clearday/types';
 
 const EFFORT_RADII: Record<string, number> = { quick: 20, short: 29, medium: 38, deep: 50 };
 
@@ -36,7 +36,7 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
   const insets = useSafeAreaInsets();
   const fonts = getFontSet(fontChoice as any);
   const nav = useContext(NavCtx);
-  const { agendas, mit, updateAgendaPosition } = useClearDayStore();
+  const { agendas, mit, updateAgendaPosition, updateAgenda } = useClearDayStore();
 
   const [selectedTags, setSelectedTags] = useState<Set<string> | null>(null); // null = all
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
@@ -67,8 +67,8 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
 
   const openAddAtPosition = (locationX: number, locationY: number) => {
     if (canvasSize.width === 0) return;
-    const urgency = Math.round((locationX / canvasSize.width) * 90 + 5);
-    const importance = Math.round((1 - locationY / canvasSize.height) * 90 + 5);
+    const urgency = Math.max(0, Math.min(100, Math.round((locationX / canvasSize.width) * 100)));
+    const importance = Math.max(0, Math.min(100, Math.round((1 - locationY / canvasSize.height) * 100)));
     // If a single tag filter is active, pre-select that domain
     const defaultDomain = selectedTags && selectedTags.size === 1 ? Array.from(selectedTags)[0] : undefined;
     nav.setAddSheetPreset({ urgency, importance, defaultDomain });
@@ -238,6 +238,7 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
             onTap={() => { nav.setBubbleActionId(agenda.id); nav.openPanel('bubbleAction'); }}
             onEdit={() => { nav.setEditAgendaId(agenda.id); nav.openPanel('edit'); }}
             onDrop={(cx, cy) => updateAgendaPosition(agenda.id, cx, cy)}
+            onResize={(time) => updateAgenda(agenda.id, { time })}
           />
         ))}
 
@@ -263,9 +264,12 @@ interface BubbleProps {
   onTap: () => void;
   onEdit: () => void;
   onDrop: (cx: number, cy: number) => void;
+  onResize: (time: AgendaTime) => void;
 }
 
-function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdit, onDrop }: BubbleProps) {
+const EFFORT_STEPS: AgendaTime[] = ['quick', 'short', 'medium', 'deep'];
+
+function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdit, onDrop, onResize }: BubbleProps) {
   const radius = getRadius(agenda.time);
   const color = qColor(agenda.quadrant, tokens);
   const wash = qWash(agenda.quadrant, tokens);
@@ -281,12 +285,21 @@ function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdi
   const lastPos = useRef({ x: clampedCx * canvasWidth, y: clampedCy * canvasHeight });
   const didMove = useRef(false);
   const lastTapTime = useRef(0);
+  const resizeMode = useRef(false);
+  const resizeStartIndex = useRef(0);
+  const [previewTime, setPreviewTime] = useState<AgendaTime>(agenda.time);
+  const previewTimeRef = useRef<AgendaTime>(agenda.time);
 
   // Stable refs for values used inside PanResponder callbacks
   const sizeRef = useRef({ w: canvasWidth, h: canvasHeight, r: radius });
   sizeRef.current = { w: canvasWidth, h: canvasHeight, r: radius };
   const cbRef = useRef({ onTap, onEdit, onDrop });
   cbRef.current = { onTap, onEdit, onDrop };
+
+  useEffect(() => {
+    setPreviewTime(agenda.time);
+    previewTimeRef.current = agenda.time;
+  }, [agenda.time]);
 
   const fontSize = radius > 40 ? 8 : radius > 28 ? 7 : 6.5;
   const isOnHold = agenda.status === 'onhold';
@@ -305,14 +318,36 @@ function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdi
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 3 || Math.abs(gs.dy) > 3,
 
-    onPanResponderGrant: () => {
+    onPanResponderGrant: (evt) => {
       dragging.current = true;
       didMove.current = false;
+      resizeMode.current = false;
+
+      // Only enter resize when grabbing the outline ring (not the center).
+      const lx = evt?.nativeEvent?.locationX ?? radius;
+      const ly = evt?.nativeEvent?.locationY ?? radius;
+      const dx = lx - radius;
+      const dy = ly - radius;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const tol = Math.max(8, radius * 0.18);
+      if (Math.abs(dist - radius) <= tol) {
+        resizeMode.current = true;
+        resizeStartIndex.current = Math.max(0, EFFORT_STEPS.indexOf(agenda.time));
+        setPreviewTime(agenda.time);
+      }
     },
 
     onPanResponderMove: (_, gs) => {
       if (Math.abs(gs.dx) > 3 || Math.abs(gs.dy) > 3) {
         didMove.current = true;
+      }
+      if (resizeMode.current) {
+        const stepDelta = -Math.trunc(gs.dy / 36);
+        const nextIndex = Math.max(0, Math.min(EFFORT_STEPS.length - 1, resizeStartIndex.current + stepDelta));
+        const next = EFFORT_STEPS[nextIndex];
+        previewTimeRef.current = next;
+        setPreviewTime(next);
+        return;
       }
       const { w, h, r } = sizeRef.current;
       const nx = Math.max(r, Math.min(w - r, lastPos.current.x + gs.dx));
@@ -324,6 +359,11 @@ function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdi
     onPanResponderRelease: (_, gs) => {
       dragging.current = false;
 
+      if (resizeMode.current) {
+        resizeMode.current = false;
+        if (previewTimeRef.current !== agenda.time) onResize(previewTimeRef.current);
+        return;
+      }
       if (!didMove.current) {
         // Tap (no drag) — detect single vs double
         const now = Date.now();
@@ -348,18 +388,21 @@ function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdi
       posY.setValue(newCy * h - r);
       cbRef.current.onDrop(newCx, newCy);
     },
-  }), [posX, posY]);
+  }), [agenda.time, onResize, posX, posY, radius]);
 
   const size = radius * 2;
+  const previewRadius = getRadius(previewTime);
+  const previewSize = previewRadius * 2;
+  const centerOffset = radius - previewRadius;
   return (
     <Animated.View
       {...panResponder.panHandlers}
       style={[
         {
           position: 'absolute',
-          width: size,
-          height: size,
-          borderRadius: radius,
+          width: previewSize,
+          height: previewSize,
+          borderRadius: previewRadius,
           backgroundColor: wash,
           borderWidth: 1.5,
           borderColor: color + 'BF', // 75% opacity
@@ -367,7 +410,7 @@ function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdi
           alignItems: 'center',
           opacity: isOnHold ? 0.42 : 1,
         },
-        { transform: [{ translateX: posX }, { translateY: posY }] },
+        { transform: [{ translateX: posX }, { translateY: posY }, { translateX: centerOffset }, { translateY: centerOffset }] },
       ]}
     >
       <Text
