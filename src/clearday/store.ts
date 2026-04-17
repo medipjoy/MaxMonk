@@ -47,6 +47,10 @@ interface ClearDayState {
   renameTag: (oldTag: string, newTag: string) => Promise<boolean>;
   setMit: (mit: string) => Promise<void>;
   setVaultRetentionDays: (days: number) => Promise<void>;
+  setMatrixStyle: (style: AppConfig['matrixStyle']) => Promise<void>;
+  setFontChoice: (font: AppConfig['fontChoice']) => Promise<void>;
+  setMitResetHour: (hour: number) => Promise<void>;
+  setFontSizeMultiplier: (multiplier: number) => Promise<void>;
 
   addAgenda: (input: {
     text: string;
@@ -639,6 +643,30 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
 
   setVaultRetentionDays: async (days: number) => {
     const next = { ...get().config, vaultRetentionDays: days };
+    set({ config: next });
+    await saveConfig(next);
+  },
+
+  setMatrixStyle: async (style) => {
+    const next = { ...get().config, matrixStyle: style };
+    set({ config: next });
+    await saveConfig(next);
+  },
+
+  setFontChoice: async (font) => {
+    const next = { ...get().config, fontChoice: font };
+    set({ config: next });
+    await saveConfig(next);
+  },
+
+  setMitResetHour: async (hour) => {
+    const next = { ...get().config, mitResetHour: hour };
+    set({ config: next });
+    await saveConfig(next);
+  },
+
+  setFontSizeMultiplier: async (multiplier) => {
+    const next = { ...get().config, fontSizeMultiplier: multiplier };
     set({ config: next });
     await saveConfig(next);
   },

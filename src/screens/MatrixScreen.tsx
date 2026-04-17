@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, LayoutChangeEvent,
   TouchableOpacity, TouchableWithoutFeedback, PanResponder,
@@ -12,7 +12,7 @@ import { getFontSet } from '../clearday/fonts';
 import { moderateScale, fontScale } from '../clearday/scale';
 import { NavCtx } from '../clearday/ClarityApp';
 import { MITStrip } from '../components/MITStrip';
-import { Agenda, AgendaTime, MatrixStyle } from '../clearday/types';
+import { Agenda, MatrixStyle } from '../clearday/types';
 
 const EFFORT_RADII: Record<string, number> = { quick: 20, short: 29, medium: 38, deep: 50 };
 
@@ -36,7 +36,7 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
   const insets = useSafeAreaInsets();
   const fonts = getFontSet(fontChoice as any);
   const nav = useContext(NavCtx);
-  const { agendas, mit, updateAgendaPosition, updateAgenda } = useClearDayStore();
+  const { agendas, mit, updateAgendaPosition } = useClearDayStore();
 
   const [selectedTags, setSelectedTags] = useState<Set<string> | null>(null); // null = all
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
@@ -219,34 +219,35 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
 
       {/* Matrix Canvas */}
       <View ref={canvasRef} style={s.canvas} onLayout={onLayout}>
+        {/* Background — tappable for single/double-tap */}
         <TouchableWithoutFeedback onPress={handleCanvasTap}>
-          <View style={{ flex: 1 }}>
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
             {renderBackground()}
-
-            {innerW > 0 && activeAgendas.map(agenda => (
-              <Bubble
-                key={agenda.id}
-                agenda={agenda}
-                tokens={tokens}
-                fonts={fonts}
-                canvasWidth={innerW}
-                canvasHeight={innerH}
-                onTap={() => { nav.setBubbleActionId(agenda.id); nav.openPanel('bubbleAction'); }}
-                onEdit={() => { nav.setEditAgendaId(agenda.id); nav.openPanel('edit'); }}
-                onDrop={(cx, cy) => updateAgendaPosition(agenda.id, cx, cy)}
-                onResize={(time) => updateAgenda(agenda.id, { time })}
-              />
-            ))}
-
-            {q1Count > 5 && (
-              <View style={s.q1Warning}>
-                <Text style={{ fontFamily: fonts.serifItalic, fontSize: 6.5, color: tokens.q1 }}>
-                  5+ items — consider delegating
-                </Text>
-              </View>
-            )}
           </View>
         </TouchableWithoutFeedback>
+
+        {/* Bubbles — rendered above background, each owns its own gesture */}
+        {innerW > 0 && activeAgendas.map(agenda => (
+          <Bubble
+            key={agenda.id}
+            agenda={agenda}
+            tokens={tokens}
+            fonts={fonts}
+            canvasWidth={innerW}
+            canvasHeight={innerH}
+            onTap={() => { nav.setBubbleActionId(agenda.id); nav.openPanel('bubbleAction'); }}
+            onEdit={() => { nav.setEditAgendaId(agenda.id); nav.openPanel('edit'); }}
+            onDrop={(cx, cy) => updateAgendaPosition(agenda.id, cx, cy)}
+          />
+        ))}
+
+        {q1Count > 5 && (
+          <View style={s.q1Warning}>
+            <Text style={{ fontFamily: fonts.serifItalic, fontSize: 6.5, color: tokens.q1 }}>
+              5+ items — consider delegating
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -262,10 +263,9 @@ interface BubbleProps {
   onTap: () => void;
   onEdit: () => void;
   onDrop: (cx: number, cy: number) => void;
-  onResize: (time: AgendaTime) => void;
 }
 
-function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdit, onDrop, onResize }: BubbleProps) {
+function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdit, onDrop }: BubbleProps) {
   const radius = getRadius(agenda.time);
   const color = qColor(agenda.quadrant, tokens);
   const wash = qWash(agenda.quadrant, tokens);
@@ -276,21 +276,20 @@ function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdi
 
   const posX = useRef(new Animated.Value(clampedCx * canvasWidth - radius)).current;
   const posY = useRef(new Animated.Value(clampedCy * canvasHeight - radius)).current;
-  const scale = useRef(new Animated.Value(1)).current;
 
   const dragging = useRef(false);
   const lastPos = useRef({ x: clampedCx * canvasWidth, y: clampedCy * canvasHeight });
   const didMove = useRef(false);
   const lastTapTime = useRef(0);
 
-  // Long-press detection
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  // Stable refs for values used inside PanResponder callbacks
+  const sizeRef = useRef({ w: canvasWidth, h: canvasHeight, r: radius });
+  sizeRef.current = { w: canvasWidth, h: canvasHeight, r: radius };
+  const cbRef = useRef({ onTap, onEdit, onDrop });
+  cbRef.current = { onTap, onEdit, onDrop };
 
   const fontSize = radius > 40 ? 8 : radius > 28 ? 7 : 6.5;
   const isOnHold = agenda.status === 'onhold';
-  useEffect(() => {
-    // keep animated position in sync when agenda changes
-  }, [agenda.time]);
 
   useEffect(() => {
     if (dragging.current) return;
@@ -301,61 +300,55 @@ function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdi
     Animated.spring(posY, { toValue: nextY, useNativeDriver: false }).start();
   }, [clampedCx, clampedCy, canvasWidth, canvasHeight, radius, posX, posY]);
 
-  const panResponder = PanResponder.create({
+  // Single stable PanResponder — tap opens action sheet, drag moves bubble, double-tap edits
+  const panResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 3 || Math.abs(gs.dy) > 3,
 
     onPanResponderGrant: () => {
       dragging.current = true;
       didMove.current = false;
-      Animated.spring(scale, { toValue: 1.06, useNativeDriver: true }).start();
-
-      // Start long-press timer (500ms)
-      longPressTimer.current = setTimeout(() => {
-        if (!didMove.current) {
-          onTap();
-        }
-      }, 500);
     },
 
     onPanResponderMove: (_, gs) => {
       if (Math.abs(gs.dx) > 3 || Math.abs(gs.dy) > 3) {
         didMove.current = true;
-        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
       }
-      const nx = Math.max(radius, Math.min(canvasWidth - radius, lastPos.current.x + gs.dx));
-      const ny = Math.max(radius, Math.min(canvasHeight - radius, lastPos.current.y + gs.dy));
-      posX.setValue(nx - radius);
-      posY.setValue(ny - radius);
+      const { w, h, r } = sizeRef.current;
+      const nx = Math.max(r, Math.min(w - r, lastPos.current.x + gs.dx));
+      const ny = Math.max(r, Math.min(h - r, lastPos.current.y + gs.dy));
+      posX.setValue(nx - r);
+      posY.setValue(ny - r);
     },
 
     onPanResponderRelease: (_, gs) => {
-      if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
-      Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
       dragging.current = false;
 
       if (!didMove.current) {
-        // Detect double-tap (two quick taps within 280ms)
+        // Tap (no drag) — detect single vs double
         const now = Date.now();
-        if (now - lastTapTime.current < 280) {
-          onEdit();
+        if (now - lastTapTime.current < 300) {
+          cbRef.current.onEdit();
           lastTapTime.current = 0;
         } else {
           lastTapTime.current = now;
+          cbRef.current.onTap();
         }
         return;
       }
 
-      const nx = Math.max(radius, Math.min(canvasWidth - radius, lastPos.current.x + gs.dx));
-      const ny = Math.max(radius, Math.min(canvasHeight - radius, lastPos.current.y + gs.dy));
-      const newCx = Math.max(0.03, Math.min(0.97, nx / canvasWidth));
-      const newCy = Math.max(0.03, Math.min(0.97, ny / canvasHeight));
-      lastPos.current = { x: newCx * canvasWidth, y: newCy * canvasHeight };
-      posX.setValue(newCx * canvasWidth - radius);
-      posY.setValue(newCy * canvasHeight - radius);
-      onDrop(newCx, newCy);
+      // Drag completed — commit new position
+      const { w, h, r } = sizeRef.current;
+      const nx = Math.max(r, Math.min(w - r, lastPos.current.x + gs.dx));
+      const ny = Math.max(r, Math.min(h - r, lastPos.current.y + gs.dy));
+      const newCx = Math.max(0.03, Math.min(0.97, nx / w));
+      const newCy = Math.max(0.03, Math.min(0.97, ny / h));
+      lastPos.current = { x: newCx * w, y: newCy * h };
+      posX.setValue(newCx * w - r);
+      posY.setValue(newCy * h - r);
+      cbRef.current.onDrop(newCx, newCy);
     },
-  });
+  }), [posX, posY]);
 
   const size = radius * 2;
   return (
@@ -374,7 +367,7 @@ function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdi
           alignItems: 'center',
           opacity: isOnHold ? 0.42 : 1,
         },
-        { transform: [{ translateX: posX }, { translateY: posY }, { scale }] },
+        { transform: [{ translateX: posX }, { translateY: posY }] },
       ]}
     >
       <Text

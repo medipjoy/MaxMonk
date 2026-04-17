@@ -13,10 +13,10 @@
 ## Privacy and Permissions
 - Keep runtime permissions minimal; add only if feature needs it.
 - Document what data stays local vs. leaves device.
-- Ensure AI mode (currently stubbed) has no hidden network calls.
+- All data is local (AsyncStorage). No network calls from app code.
 
 ## QA Gates
-- iOS + Android smoke pass: launch, add/drag move, MIT edit, sparks, vault/restore.
+- iOS + Android smoke pass: launch, add/drag move, MIT edit, vault/restore.
 - Persistence test across cold restart.
 - Migration test from legacy `@maxmonk_tasks` / SQLite `tasks` data.
 - Regression: on-hold opacity and quadrant reassignment behavior.
