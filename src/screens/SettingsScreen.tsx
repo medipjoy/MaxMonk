@@ -57,31 +57,8 @@ export function SettingsScreen({ tokens, fontChoice, themeMode, matrixStyle, mit
   const insets = useSafeAreaInsets();
   const fonts = getFontSet(fontChoice as any);
   const nav = useContext(NavCtx);
-  const { config, setThemeMode, setTags, setVaultRetentionDays, addTag, removeTag, renameTag, setQuadrantLabels } = useClearDayStore();
-  const store = useClearDayStore();
+  const { config, setThemeMode, setTags, setVaultRetentionDays, addTag, removeTag, renameTag, setQuadrantLabels, setMatrixStyle, setFontChoice, setMitResetHour, setFontSizeMultiplier } = useClearDayStore();
   const [showQuadrantPicker, setShowQuadrantPicker] = useState(false);
-
-  // Proxy setters via store (we add these to action functions)
-  const setMatrixStyle = async (style: MatrixStyle) => {
-    const newCfg = { ...config, matrixStyle: style };
-    await (store as any).saveConfig?.(newCfg) ?? store.setThemeMode(config.themeMode); // fallback
-    useClearDayStore.setState({ config: newCfg });
-  };
-
-  const setFontChoice = async (font: string) => {
-    const newCfg = { ...config, fontChoice: font as any };
-    useClearDayStore.setState({ config: newCfg });
-  };
-
-  const setMitResetHour = async (h: number) => {
-    const newCfg = { ...config, mitResetHour: h };
-    useClearDayStore.setState({ config: newCfg });
-  };
-
-  const setFontSizeMultiplier = (multiplier: number) => {
-    const newCfg = { ...config, fontSizeMultiplier: multiplier };
-    useClearDayStore.setState({ config: newCfg });
-  };
 
   const currentFontSize = config.fontSizeMultiplier ?? 1.0;
   const fontSizeMultiplier = currentFontSize;

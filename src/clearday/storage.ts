@@ -1,5 +1,4 @@
-import { Platform } from 'react-native';
-import { Agenda, AgendaDomain, AgendaTime, AppConfig, DEFAULT_QUADRANT_LABELS, DEFAULT_TAGS, VaultEntry } from './types';
+import { Agenda, AgendaDomain, AgendaTime, AppConfig, DEFAULT_QUADRANT_LABELS, VaultEntry } from './types';
 import { STORAGE_KEYS, todayKey } from './helpers';
 
 let asyncStorage: any = null;
@@ -111,12 +110,6 @@ export async function getLegacyWebTasks(): Promise<any[]> {
 }
 
 export async function getLegacyNativeTasks(): Promise<any[]> {
-  if (Platform.OS === 'web') return [];
-  try {
-    const db = await (require('./sqliteWeb') as typeof import('./sqliteWeb')).openDatabaseAsync('maxmonk.db');
-    const rows = await db.getAllAsync('SELECT * FROM tasks ORDER BY createdAt DESC');
-    return (rows ?? []) as any[];
-  } catch {
-    return [];
-  }
+  // SQLite migration bridge removed — legacy data has already been migrated to AsyncStorage
+  return [];
 }

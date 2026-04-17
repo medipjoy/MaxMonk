@@ -5,7 +5,9 @@
       "Bash(node -e \"const p = require\\('./package.json'\\); console.log\\('expo:', p.dependencies.expo\\); console.log\\('reanimated:', p.dependencies['react-native-reanimated']\\); console.log\\('rn:', p.dependencies['react-native']\\);\")",
       "Bash(npm show:*)",
       "Bash(python3 -c \"import sys,json; v=json.load\\(sys.stdin\\); print\\([x for x in v if x.startswith\\('0.'\\) or x.startswith\\('~'\\)][-5:]\\)\")",
-      "Bash(python3 -c \"import sys,json; v=json.load\\(sys.stdin\\); stable=[x for x in v if '-' not in x]; print\\(stable[-10:]\\)\")"
+      "Bash(python3 -c \"import sys,json; v=json.load\\(sys.stdin\\); stable=[x for x in v if '-' not in x]; print\\(stable[-10:]\\)\")",
+      "Bash(curl -s http://localhost:8081)",
+      "Bash(curl -s \"http://localhost:8081/index.bundle?platform=web&dev=true\")"
     ]
   }
 }

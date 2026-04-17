@@ -3,19 +3,8 @@ import { Agenda, AgendaTime, Quadrant } from './types';
 export const STORAGE_KEYS = {
   moves: 'cd-mv',
   vault: 'cd-vt',
-  sparks: 'cd-sp',
   config: 'cd-cfg',
   addDraft: 'cd-ad',
-};
-
-export const COLORS = {
-  bg: '#07070D',
-  surface: '#0F0F16',
-  surface2: '#14141C',
-  border: 'rgba(255,255,255,0.08)',
-  text: '#DDDDE8',
-  muted: '#60607A',
-  accent: '#A78BFA',
 };
 
 export function uid(): string {
