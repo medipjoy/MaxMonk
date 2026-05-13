@@ -1,10 +1,11 @@
-import { Agenda, AgendaTime, Quadrant } from './types';
+import { Quadrant } from './types';
 
 export const STORAGE_KEYS = {
   moves: 'cd-mv',
   vault: 'cd-vt',
   config: 'cd-cfg',
   addDraft: 'cd-ad',
+  editDraftPrefix: 'cd-ed:',
 };
 
 export function uid(): string {
@@ -41,13 +42,6 @@ export function slidersFromPos(cx: number, cy: number): { urgency: number; impor
   };
 }
 
-export function getR(time: AgendaTime): number {
-  if (time === 'quick') return 20;
-  if (time === 'short') return 29;
-  if (time === 'medium') return 38;
-  return 50;
-}
-
 export function todayKey(): string {
   const d = new Date();
   const yyyy = d.getFullYear();
@@ -56,38 +50,4 @@ export function todayKey(): string {
   return `cd-mit-${yyyy}-${mm}-${dd}`;
 }
 
-export function summarizeBubble(text: string, _time: AgendaTime, maxChars = 25): string {
-  const clean = text.replace(/\s+/g, ' ').trim();
-  if (clean.length <= maxChars) return clean;
-  return `${clean.slice(0, Math.max(1, maxChars - 1)).trimEnd()}…`;
-}
-
-export function randomPosInQuadrant(q: Quadrant): { cx: number; cy: number } {
-  const rand = (min: number, max: number) => min + Math.random() * (max - min);
-  if (q === 'Q1') return { cx: rand(0.56, 0.94), cy: rand(0.06, 0.44) };
-  if (q === 'Q2') return { cx: rand(0.06, 0.44), cy: rand(0.06, 0.44) };
-  if (q === 'Q3') return { cx: rand(0.56, 0.94), cy: rand(0.56, 0.94) };
-  return { cx: rand(0.06, 0.44), cy: rand(0.56, 0.94) };
-}
-
 export const EXPIRY_DAYS = 60;
-
-export function getVaultDaysLeft(archivedAt: number): number {
-  const elapsed = Date.now() - archivedAt;
-  const days = Math.floor(elapsed / (1000 * 60 * 60 * 24));
-  return Math.max(0, EXPIRY_DAYS - days);
-}
-
-export function isExpired(archivedAt: number): boolean {
-  return getVaultDaysLeft(archivedAt) === 0;
-}
-
-export function countByQuadrant(agendas: Agenda[]): Record<Quadrant, number> {
-  return agendas.reduce(
-    (acc, agenda) => {
-      acc[agenda.quadrant] += 1;
-      return acc;
-    },
-    { Q1: 0, Q2: 0, Q3: 0, Q4: 0 } as Record<Quadrant, number>,
-  );
-}

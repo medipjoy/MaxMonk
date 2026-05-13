@@ -32,7 +32,10 @@ export function CompletedScreen({ tokens, fontChoice }: Props) {
 
   const completed = agendas.filter(a => a.status === 'done');
   const grouped: Record<string, typeof completed> = {};
-  Q_ORDER.forEach(q => { grouped[q] = completed.filter(a => a.quadrant === q); });
+  Q_ORDER.forEach(q => {
+    grouped[q] = [...completed.filter(a => a.quadrant === q)]
+      .sort((a, b) => (a.listOrder ?? 0) - (b.listOrder ?? 0) || (b.doneAt ?? 0) - (a.doneAt ?? 0));
+  });
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: tokens.bg, paddingTop: insets.top },

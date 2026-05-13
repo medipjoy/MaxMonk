@@ -22,7 +22,7 @@ const TIME_LABEL: Record<string, string> = { quick: '⚡ Quick', short: '◔ Sho
 export function BubbleActionSheet({ tokens, fontChoice, agendaId, onClose, onAction, onEdit }: Props) {
   const fonts = getFontSet(fontChoice as any);
   const insets = useSafeAreaInsets();
-  const { agendas, completeAgenda, toggleHold, archiveAgenda, addAgenda } = useClearDayStore();
+  const { agendas, completeAgenda, toggleHold, archiveAgenda } = useClearDayStore();
   const fontSizeMultiplier = useClearDayStore(s => s.config?.fontSizeMultiplier ?? 1.0);
   const quadrantLabels = useClearDayStore(s => s.config.quadrantLabels);
   const agenda = agendas.find(a => a.id === agendaId);
@@ -46,7 +46,6 @@ export function BubbleActionSheet({ tokens, fontChoice, agendaId, onClose, onAct
     row: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: tokens.border, gap: 12 },
     icon: { width: 20, fontSize: fontScale(14, fontSizeMultiplier) },
     rowText: { fontFamily: fonts.serif, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.text },
-    deleteText: { fontFamily: fonts.serif, fontSize: fontScale(13, fontSizeMultiplier), color: tokens.q1 },
   });
 
   const rows = [
@@ -68,19 +67,16 @@ export function BubbleActionSheet({ tokens, fontChoice, agendaId, onClose, onAct
                 {quadrantLabels[agenda.quadrant as Quadrant]} · {agenda.domain} · {TIME_LABEL[agenda.time]}
               </Text>
             </View>
-            {rows.map(r => (
-              <TouchableOpacity key={r.label} style={s.row} onPress={r.onPress}>
+            {rows.map((r, idx) => (
+              <TouchableOpacity
+                key={r.label}
+                style={[s.row, idx === rows.length - 1 && { borderBottomWidth: 0 }]}
+                onPress={r.onPress}
+              >
                 <View style={{ width: 16, alignItems: 'center' }}>{r.icon}</View>
                 <Text style={[s.rowText, { flex: 1 }]}>{r.label}</Text>
               </TouchableOpacity>
             ))}
-            <TouchableOpacity style={[s.row, { borderBottomWidth: 0 }]} onPress={() => {
-              // Soft delete: archive
-              archiveAgenda(agendaId);
-              onAction('Deleted');
-            }}>
-              <Text style={[s.deleteText, { flex: 1 }]}>✕  Delete</Text>
-            </TouchableOpacity>
           </View>
         </TouchableWithoutFeedback>
       </View>

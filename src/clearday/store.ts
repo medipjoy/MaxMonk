@@ -6,6 +6,7 @@ import {
   loadConfig,
   loadTodayMit,
   loadVault,
+  purgeStaleEditDrafts,
   saveAgendas,
   saveConfig,
   saveTodayMit,
@@ -282,6 +283,8 @@ export const useClearDayStore = create<ClearDayState>((set, get) => ({
     if (holdPolicy.vault.length > 0 || tagsChanged || vaultChanged || orderChanged) {
       await Promise.all([saveAgendas(agendas), saveVault(vault), saveConfig(config)]);
     }
+
+    await purgeStaleEditDrafts(agendas.map((a) => a.id)).catch(() => {});
   },
 
   setName: async (name: string) => {

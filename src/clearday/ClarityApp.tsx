@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableWithoutFeedback,
+  PanResponder,
   Platform,
   Dimensions,
   useColorScheme,
@@ -166,6 +167,35 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
     systemScheme,
   };
 
+  const SWIPE_CYCLE: Screen[] = ['matrix', 'active', 'hold', 'vault', 'settings'];
+  const panelOpenRef = useRef(panel);
+  panelOpenRef.current = panel;
+  const screenRef = useRef(screen);
+  screenRef.current = screen;
+
+  const swipeResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, gs) => {
+          if (panelOpenRef.current) return false;
+          return Math.abs(gs.dx) > 40 && Math.abs(gs.dx) > 2.5 * Math.abs(gs.dy);
+        },
+        onPanResponderMove: () => {},
+        onPanResponderRelease: (_, gs) => {
+          if (Math.abs(gs.dx) < 80) return;
+          const idx = SWIPE_CYCLE.indexOf(screenRef.current);
+          if (idx < 0) return;
+          const nextIdx = gs.dx < 0
+            ? (idx + 1) % SWIPE_CYCLE.length
+            : (idx - 1 + SWIPE_CYCLE.length) % SWIPE_CYCLE.length;
+          goTo(SWIPE_CYCLE[nextIdx]);
+        },
+        onPanResponderTerminationRequest: () => true,
+      }),
+    [],
+  );
+
   const renderScreen = () => {
     switch (screen) {
       case 'active': return <ActiveScreen tokens={tokens} fontChoice={config.fontChoice} />;
@@ -208,10 +238,10 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
         {isWide ? (
           <View style={s.wide}>
             <Sidebar tokens={tokens} fontChoice={config.fontChoice} screen={screen} goTo={goTo} openPanel={openPanel} />
-            <View style={s.main}>{renderScreen()}</View>
+            <View style={s.main} {...swipeResponder.panHandlers}>{renderScreen()}</View>
           </View>
         ) : (
-          <>
+          <View style={{ flex: 1 }} {...swipeResponder.panHandlers}>
             {renderScreen()}
             {isPillScreenActive && pillVisible && (
               <View
@@ -223,7 +253,7 @@ export function ClarityApp({ systemScheme }: ClarityAppProps) {
                 <PillIcons screen={screen} tokens={tokens} goTo={goTo} openPanel={openPanel} fsm={fsm} />
               </View>
             )}
-          </>
+          </View>
         )}
 
         {/* Panels / Sheets */}

@@ -36,7 +36,7 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
   const insets = useSafeAreaInsets();
   const fonts = getFontSet(fontChoice as any);
   const nav = useContext(NavCtx);
-  const { agendas, mit, updateAgendaPosition, updateAgenda } = useClearDayStore();
+  const { agendas, mit, updateAgendaPosition, updateAgenda, setTags } = useClearDayStore();
 
   const [selectedTags, setSelectedTags] = useState<Set<string> | null>(null); // null = all
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
@@ -100,7 +100,7 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
     filterRow: { height: 26, paddingHorizontal: 10, flexDirection: 'row', gap: 2, alignItems: 'center', justifyContent: 'center' },
     chip: { flexDirection: 'row', alignItems: 'center', borderRadius: 2, paddingHorizontal: 6, paddingVertical: 1, gap: 4 },
     chipDot: { width: 3, height: 3, borderRadius: 1.5 },
-    chipText: { fontSize: fontScale(8.5, fontSizeMultiplier) },
+    chipText: { fontFamily: fonts.serif, fontSize: fontScale(9, fontSizeMultiplier) },
     canvas: { flex: 1, position: 'relative' },
     q1Warning: {
       position: 'absolute', right: 6, bottom: canvasSize.height / 2 + 4,
@@ -121,10 +121,10 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
         <Svg width={svgW} height={svgH} style={{ position: 'absolute', top: 0, left: 0 }} pointerEvents="none">
           <Line x1={svgW / 2} y1={0} x2={svgW / 2} y2={svgH} stroke={tokens.axisLine} strokeWidth={1} />
           <Line x1={0} y1={svgH / 2} x2={svgW} y2={svgH / 2} stroke={tokens.axisLine} strokeWidth={1} />
-          <SvgText x={svgW / 2 - 4} y={svgH / 2 - 6} fontSize={10.5 * fontSizeMultiplier} fill={tokens.q2} opacity={0.24} fontStyle="italic" textAnchor="end">{quadrantLabels.Q2}</SvgText>
-          <SvgText x={svgW / 2 + 4} y={svgH / 2 - 6} fontSize={10.5 * fontSizeMultiplier} fill={tokens.q1} opacity={0.24} fontStyle="italic">{quadrantLabels.Q1}</SvgText>
-          <SvgText x={svgW / 2 - 4} y={svgH / 2 + 14} fontSize={10.5 * fontSizeMultiplier} fill={tokens.q4} opacity={0.24} fontStyle="italic" textAnchor="end">{quadrantLabels.Q4}</SvgText>
-          <SvgText x={svgW / 2 + 4} y={svgH / 2 + 14} fontSize={10.5 * fontSizeMultiplier} fill={tokens.q3} opacity={0.24} fontStyle="italic">{quadrantLabels.Q3}</SvgText>
+          <SvgText x={svgW / 2 - 4} y={svgH / 2 - 6} fontFamily={fonts.serifItalic} fontSize={fontScale(10.5, fontSizeMultiplier)} fill={tokens.q2} opacity={0.24} fontStyle="italic" textAnchor="end">{quadrantLabels.Q2}</SvgText>
+          <SvgText x={svgW / 2 + 4} y={svgH / 2 - 6} fontFamily={fonts.serifItalic} fontSize={fontScale(10.5, fontSizeMultiplier)} fill={tokens.q1} opacity={0.24} fontStyle="italic">{quadrantLabels.Q1}</SvgText>
+          <SvgText x={svgW / 2 - 4} y={svgH / 2 + 14} fontFamily={fonts.serifItalic} fontSize={fontScale(10.5, fontSizeMultiplier)} fill={tokens.q4} opacity={0.24} fontStyle="italic" textAnchor="end">{quadrantLabels.Q4}</SvgText>
+          <SvgText x={svgW / 2 + 4} y={svgH / 2 + 14} fontFamily={fonts.serifItalic} fontSize={fontScale(10.5, fontSizeMultiplier)} fill={tokens.q3} opacity={0.24} fontStyle="italic">{quadrantLabels.Q3}</SvgText>
         </Svg>
       );
     }
@@ -151,8 +151,8 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
           {majorLines.map((l, i) => <Line key={`mj${i}`} x1={(l.props as any).x1} y1={(l.props as any).y1} x2={(l.props as any).x2} y2={(l.props as any).y2} stroke="rgba(0,0,0,0.08)" strokeWidth={1} />)}
           <Line x1={centerX} y1={0} x2={centerX} y2={svgH} stroke="rgba(0,0,0,0.14)" strokeWidth={1} />
           <Line x1={0} y1={svgH / 2} x2={svgW} y2={svgH / 2} stroke="rgba(0,0,0,0.14)" strokeWidth={1} />
-          <SvgText x={centerX + 8} y={22} fontSize={8.5 * fontSizeMultiplier} fill={tokens.textGhost} fontStyle="italic">Important →</SvgText>
-          <SvgText x={svgW - 4} y={svgH / 2 - 4} fontSize={8.5 * fontSizeMultiplier} fill={tokens.textGhost} textAnchor="end" fontStyle="italic">Urgency →</SvgText>
+          <SvgText x={centerX + 8} y={22} fontFamily={fonts.serifItalic} fontSize={fontScale(8.5, fontSizeMultiplier)} fill={tokens.textGhost} fontStyle="italic">Important →</SvgText>
+          <SvgText x={svgW - 4} y={svgH / 2 - 4} fontFamily={fonts.serifItalic} fontSize={fontScale(8.5, fontSizeMultiplier)} fill={tokens.textGhost} textAnchor="end" fontStyle="italic">Urgency →</SvgText>
         </Svg>
       );
     }
@@ -167,10 +167,10 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
         <Line x1={0} y1={svgH / 2} x2={svgW} y2={svgH / 2} stroke={tokens.axisLine} strokeWidth={1} />
         <Line x1={svgW / 2} y1={0} x2={svgW / 2} y2={svgH} stroke={tokens.axisLine} strokeWidth={1} />
         {/* Watermarks — near axis center */}
-        <SvgText x={svgW / 2 - 4} y={svgH / 2 - 6} fontSize={9.5 * fontSizeMultiplier} fill={tokens.q2} opacity={0.38} fontStyle="italic" textAnchor="end">{quadrantLabels.Q2}</SvgText>
-        <SvgText x={svgW / 2 + 4} y={svgH / 2 - 6} fontSize={9.5 * fontSizeMultiplier} fill={tokens.q1} opacity={0.38} fontStyle="italic">{quadrantLabels.Q1}</SvgText>
-        <SvgText x={svgW / 2 - 4} y={svgH / 2 + 14} fontSize={9.5 * fontSizeMultiplier} fill={tokens.q4} opacity={0.38} fontStyle="italic" textAnchor="end">{quadrantLabels.Q4}</SvgText>
-        <SvgText x={svgW / 2 + 4} y={svgH / 2 + 14} fontSize={9.5 * fontSizeMultiplier} fill={tokens.q3} opacity={0.38} fontStyle="italic">{quadrantLabels.Q3}</SvgText>
+        <SvgText x={svgW / 2 - 4} y={svgH / 2 - 6} fontFamily={fonts.serifItalic} fontSize={fontScale(9.5, fontSizeMultiplier)} fill={tokens.q2} opacity={0.38} fontStyle="italic" textAnchor="end">{quadrantLabels.Q2}</SvgText>
+        <SvgText x={svgW / 2 + 4} y={svgH / 2 - 6} fontFamily={fonts.serifItalic} fontSize={fontScale(9.5, fontSizeMultiplier)} fill={tokens.q1} opacity={0.38} fontStyle="italic">{quadrantLabels.Q1}</SvgText>
+        <SvgText x={svgW / 2 - 4} y={svgH / 2 + 14} fontFamily={fonts.serifItalic} fontSize={fontScale(9.5, fontSizeMultiplier)} fill={tokens.q4} opacity={0.38} fontStyle="italic" textAnchor="end">{quadrantLabels.Q4}</SvgText>
+        <SvgText x={svgW / 2 + 4} y={svgH / 2 + 14} fontFamily={fonts.serifItalic} fontSize={fontScale(9.5, fontSizeMultiplier)} fill={tokens.q3} opacity={0.38} fontStyle="italic">{quadrantLabels.Q3}</SvgText>
       </Svg>
     );
   };
@@ -185,37 +185,26 @@ export function MatrixScreen({ tokens, fontChoice, matrixStyle, onPillToggle }: 
       <MITStrip tokens={tokens} fontChoice={fontChoice} mitText={mit} onPress={() => nav.openPanel('mitSelector')} />
 
       {/* Filter Row */}
-      <View style={s.filterRow}>
-        {allTags.map((tag, i) => {
-          const isSelected = selectedTags === null || selectedTags.has(tag);
-          const tagColor = tokens.accent;
-          return (
-            <TouchableOpacity
-              key={tag}
-              onPress={() => {
-                if (selectedTags === null) {
-                  setSelectedTags(new Set([tag]));
-                } else {
-                  const next = new Set(selectedTags);
-                  if (next.has(tag)) { next.delete(tag); if (next.size === 0) setSelectedTags(null); else setSelectedTags(next); }
-                  else { next.add(tag); if (next.size === allTags.length) setSelectedTags(null); else setSelectedTags(next); }
-                }
-              }}
-              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-            >
-              <View style={[s.chip, {
-                borderWidth: isSelected ? 1 : 0.5,
-                borderColor: isSelected ? tokens.accent : tokens.borderMid,
-              }]}>
-                <View style={[s.chipDot, { backgroundColor: tagColor }]} />
-                <Text style={[s.chipText, { fontFamily: fonts.label, color: isSelected ? tokens.accent : tokens.textGhost }]}>
-                  {tag.slice(0, 3)}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      <TagFilterRow
+        tags={allTags}
+        selectedTags={selectedTags}
+        onToggle={(tag) => {
+          if (selectedTags === null) {
+            setSelectedTags(new Set([tag]));
+          } else {
+            const next = new Set(selectedTags);
+            if (next.has(tag)) { next.delete(tag); if (next.size === 0) setSelectedTags(null); else setSelectedTags(next); }
+            else { next.add(tag); if (next.size === allTags.length) setSelectedTags(null); else setSelectedTags(next); }
+          }
+        }}
+        onReorder={(nextOrder) => { void setTags(nextOrder); }}
+        tokens={tokens}
+        chipStyle={s.chip}
+        chipDotStyle={s.chipDot}
+        chipTextStyle={s.chipText}
+        rowStyle={s.filterRow}
+      />
+
 
       {/* Matrix Canvas */}
       <View ref={canvasRef} style={s.canvas} onLayout={onLayout}>
@@ -317,6 +306,7 @@ function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdi
   const panResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 3 || Math.abs(gs.dy) > 3,
+    onPanResponderTerminationRequest: () => !dragging.current,
 
     onPanResponderGrant: (evt) => {
       dragging.current = true;
@@ -429,5 +419,185 @@ function Bubble({ agenda, tokens, fonts, canvasWidth, canvasHeight, onTap, onEdi
         <Text style={{ position: 'absolute', top: 2, right: 3, fontSize: fontScale(8, fontSizeMultiplier), color: tokens.textGhost }}>–</Text>
       )}
     </Animated.View>
+  );
+}
+
+// ---- Filter Tag Row ----
+interface TagFilterRowProps {
+  tags: string[];
+  selectedTags: Set<string> | null;
+  onToggle: (tag: string) => void;
+  onReorder: (nextOrder: string[]) => void;
+  tokens: ThemeTokens;
+  rowStyle: any;
+  chipStyle: any;
+  chipDotStyle: any;
+  chipTextStyle: any;
+}
+
+function TagFilterRow({
+  tags, selectedTags, onToggle, onReorder,
+  tokens, rowStyle, chipStyle, chipDotStyle, chipTextStyle,
+}: TagFilterRowProps) {
+  const [localOrder, setLocalOrder] = useState<string[] | null>(null);
+  const chipWidthsRef = useRef<Record<string, number>>({});
+
+  // Keep localOrder in sync with incoming tags when not dragging.
+  useEffect(() => {
+    if (!localOrder) return;
+    // If the set of tags changed (add/remove/rename), discard stale order.
+    const sameSet = localOrder.length === tags.length && localOrder.every((t) => tags.includes(t));
+    if (!sameSet) setLocalOrder(null);
+  }, [tags, localOrder]);
+
+  const order = localOrder ?? tags;
+
+  return (
+    <View style={rowStyle}>
+      {order.map((tag) => (
+        <DraggableChip
+          key={tag}
+          tag={tag}
+          selected={selectedTags === null || selectedTags.has(tag)}
+          onToggle={() => onToggle(tag)}
+          onMeasure={(w) => { chipWidthsRef.current[tag] = w; }}
+          onDragDelta={(dx) => {
+            const current = localOrder ?? tags;
+            const idx = current.indexOf(tag);
+            if (idx < 0) return null;
+            const neighborIdx = dx < 0 ? idx - 1 : idx + 1;
+            if (neighborIdx < 0 || neighborIdx >= current.length) return null;
+            const neighbor = current[neighborIdx];
+            const neighborWidth = chipWidthsRef.current[neighbor] ?? 36;
+            if (Math.abs(dx) < neighborWidth * 0.55) return null;
+            const next = [...current];
+            [next[idx], next[neighborIdx]] = [next[neighborIdx], next[idx]];
+            setLocalOrder(next);
+            return next;
+          }}
+          onDragEnd={() => {
+            if (localOrder) {
+              const committed = localOrder;
+              setLocalOrder(null);
+              if (committed.join('') !== tags.join('')) onReorder(committed);
+            }
+          }}
+          tokens={tokens}
+          chipStyle={chipStyle}
+          chipDotStyle={chipDotStyle}
+          chipTextStyle={chipTextStyle}
+        />
+      ))}
+    </View>
+  );
+}
+
+interface DraggableChipProps {
+  tag: string;
+  selected: boolean;
+  onToggle: () => void;
+  onMeasure: (w: number) => void;
+  onDragDelta: (dx: number) => string[] | null;
+  onDragEnd: () => void;
+  tokens: ThemeTokens;
+  chipStyle: any;
+  chipDotStyle: any;
+  chipTextStyle: any;
+}
+
+function DraggableChip({
+  tag, selected, onToggle, onMeasure, onDragDelta, onDragEnd,
+  tokens, chipStyle, chipDotStyle, chipTextStyle,
+}: DraggableChipProps) {
+  const [dragging, setDragging] = useState(false);
+  const armedRef = useRef(false);
+  const movedRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const swapOriginRef = useRef(0);
+
+  const clearArmTimer = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = null;
+  };
+
+  const responder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => armedRef.current,
+        onMoveShouldSetPanResponderCapture: () => armedRef.current,
+        onPanResponderTerminationRequest: () => !armedRef.current,
+
+        onPanResponderGrant: () => {
+          armedRef.current = false;
+          movedRef.current = false;
+          swapOriginRef.current = 0;
+          clearArmTimer();
+          timerRef.current = setTimeout(() => {
+            if (!movedRef.current) {
+              armedRef.current = true;
+              setDragging(true);
+            }
+          }, 200);
+        },
+
+        onPanResponderMove: (_, gs) => {
+          if (!armedRef.current) {
+            if (Math.abs(gs.dx) > 6 || Math.abs(gs.dy) > 6) {
+              movedRef.current = true;
+              clearArmTimer();
+            }
+            return;
+          }
+          const dx = gs.dx - swapOriginRef.current;
+          const swapped = onDragDelta(dx);
+          if (swapped) {
+            swapOriginRef.current = gs.dx;
+          }
+        },
+
+        onPanResponderRelease: () => {
+          clearArmTimer();
+          const wasTap = !armedRef.current && !movedRef.current;
+          armedRef.current = false;
+          setDragging(false);
+          if (wasTap) {
+            onToggle();
+          } else {
+            onDragEnd();
+          }
+        },
+
+        onPanResponderTerminate: () => {
+          clearArmTimer();
+          const didArm = armedRef.current;
+          armedRef.current = false;
+          setDragging(false);
+          if (didArm) onDragEnd();
+        },
+      }),
+    [onDragDelta, onDragEnd, onToggle],
+  );
+
+  return (
+    <View
+      {...responder.panHandlers}
+      onLayout={(e) => onMeasure(e.nativeEvent.layout.width)}
+      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 } as any}
+      style={[
+        chipStyle,
+        {
+          borderWidth: selected ? 1 : 0.5,
+          borderColor: selected ? tokens.accent : tokens.borderMid,
+          transform: dragging ? [{ scale: 1.08 }] : undefined,
+          opacity: dragging ? 0.9 : 1,
+        },
+      ]}
+    >
+      <View style={[chipDotStyle, { backgroundColor: tokens.accent }]} />
+      <Text style={[chipTextStyle, { color: selected ? tokens.accent : tokens.textGhost }]}>
+        {tag.slice(0, 3)}
+      </Text>
+    </View>
   );
 }

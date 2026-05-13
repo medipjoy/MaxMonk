@@ -55,24 +55,3 @@ export function getFontSet(choice: FontChoice): FontSet {
   }
 }
 
-/**
- * Returns font size normalized for visual consistency across font choices.
- * Cormorant appears ~13% smaller at the same fontSize, so we scale it up.
- * Optionally pass fontSizeMultiplier from user settings (default 1.0).
- */
-export function getNormalizedFontSize(
-  baseFontSize: number,
-  fontChoice: FontChoice,
-  fontSizeMultiplier: number = 1.0,
-): number {
-  const fontSet = getFontSet(fontChoice);
-  return baseFontSize * fontSet.lineHeightMultiplier * fontSizeMultiplier;
-}
-
-// Font display names for Settings UI
-export const FONT_LABELS: Record<FontChoice, string> = {
-  cormorant: 'Cg',
-  baskerville: 'Lb',
-  inter: 'In',
-  jakarta: 'Pj',
-};

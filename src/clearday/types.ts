@@ -51,16 +51,3 @@ export interface AppConfig {
   vaultRetentionDays: number;        // default: 0; 0 = never auto-delete
 }
 
-export const QUADRANT_META: Record<Quadrant, { label: string; color: string; soft: string }> = {
-  Q1: { label: 'Do Now', color: '#FF5C5C', soft: 'rgba(255,92,92,0.16)' },
-  Q2: { label: 'Schedule', color: '#2ECC8F', soft: 'rgba(46,204,143,0.16)' },
-  Q3: { label: 'Delegate', color: '#5B9BFF', soft: 'rgba(91,155,255,0.16)' },
-  Q4: { label: 'Eliminate', color: '#6B6B82', soft: 'rgba(107,107,130,0.16)' },
-};
-
-export const TIME_LABELS: Record<AgendaTime, string> = {
-  quick: '⚡',
-  short: '◔',
-  medium: '◑',
-  deep: '●',
-};

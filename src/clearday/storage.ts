@@ -1,4 +1,4 @@
-import { Agenda, AgendaDomain, AgendaTime, AppConfig, DEFAULT_QUADRANT_LABELS, VaultEntry } from './types';
+import { Agenda, AppConfig, DEFAULT_QUADRANT_LABELS, VaultEntry } from './types';
 import { STORAGE_KEYS, todayKey } from './helpers';
 
 let asyncStorage: any = null;
@@ -77,25 +77,51 @@ export async function saveTodayMit(value: string): Promise<void> {
   await setItem(todayKey(), value);
 }
 
-export interface AddDraft {
+export interface SheetDraft {
   text: string;
   urgency: number;
   importance: number;
-  domain: AgendaDomain;
-  time: AgendaTime;
+  effort: number;
+  domain: string;
+  isMIT?: boolean;
   updatedAt: number;
 }
 
-export async function loadAddDraft(): Promise<AddDraft | null> {
-  return getItem<AddDraft | null>(STORAGE_KEYS.addDraft, null);
+export async function loadAddDraft(): Promise<SheetDraft | null> {
+  return getItem<SheetDraft | null>(STORAGE_KEYS.addDraft, null);
 }
 
-export async function saveAddDraft(draft: AddDraft): Promise<void> {
+export async function saveAddDraft(draft: SheetDraft): Promise<void> {
   await setItem(STORAGE_KEYS.addDraft, draft);
 }
 
 export async function clearAddDraft(): Promise<void> {
   await removeItem(STORAGE_KEYS.addDraft);
+}
+
+function editDraftKey(agendaId: string): string {
+  return `${STORAGE_KEYS.editDraftPrefix}${agendaId}`;
+}
+
+export async function loadEditDraft(agendaId: string): Promise<SheetDraft | null> {
+  return getItem<SheetDraft | null>(editDraftKey(agendaId), null);
+}
+
+export async function saveEditDraft(agendaId: string, draft: SheetDraft): Promise<void> {
+  await setItem(editDraftKey(agendaId), draft);
+}
+
+export async function clearEditDraft(agendaId: string): Promise<void> {
+  await removeItem(editDraftKey(agendaId));
+}
+
+export async function purgeStaleEditDrafts(activeIds: string[]): Promise<void> {
+  const storage = await getAsyncStorage();
+  const keys: string[] = await storage.getAllKeys();
+  const prefix = STORAGE_KEYS.editDraftPrefix;
+  const valid = new Set(activeIds);
+  const stale = keys.filter((k) => k.startsWith(prefix) && !valid.has(k.slice(prefix.length)));
+  if (stale.length) await storage.multiRemove(stale);
 }
 
 export async function getLegacyWebTasks(): Promise<any[]> {

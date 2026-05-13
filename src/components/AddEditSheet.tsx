@@ -14,6 +14,15 @@ import { clamp, posFromSliders, qFromPos, slidersFromPos } from '../clearday/hel
 import { NavCtx, AddSheetPreset } from '../clearday/ClarityApp';
 import { Quadrant } from '../clearday/types';
 import { CheckIcon } from './ActionIcons';
+import {
+  clearAddDraft,
+  clearEditDraft,
+  loadAddDraft,
+  loadEditDraft,
+  saveAddDraft,
+  saveEditDraft,
+  SheetDraft,
+} from '../clearday/storage';
 
 const EFFORT_LABELS: Record<number, string> = { 1: 'Minimal', 2: 'Light', 3: 'Moderate', 4: 'Substantial', 5: 'Committed', 6: 'Extended', 7: 'Total' };
 const EFFORT_TIME: Record<number, string> = { 1: 'quick', 2: 'short', 3: 'medium', 4: 'medium', 5: 'deep', 6: 'deep', 7: 'deep' };
@@ -113,7 +122,7 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
     preset?.importance != null ? preset.importance :
     existingAgenda?.cx != null && existingAgenda?.cy != null ? slidersFromPos(existingAgenda.cx, existingAgenda.cy).importance : 50
   );
-  const [effort, setEffort] = useState(3);
+  const [effort, setEffort] = useState(2);
   const [selectedTag, setSelectedTag] = useState(
     existingAgenda?.domain ?? preset?.defaultDomain ?? config.tags[0]
   );
@@ -121,32 +130,74 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
   const [showScrollIndicator, setShowScrollIndicator] = useState(false);
   const [scrollHeight, setScrollHeight] = useState(0);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  const savedRef = useRef(false);
 
   const dismissPan = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 5,
     onPanResponderMove: () => {},
-    onPanResponderRelease: (_, gs) => { if (gs.dy > 50) onClose(); },
+    onPanResponderRelease: (_, gs) => { if (gs.dy > 50) handleCloseRef.current?.(); },
   })).current;
+  const handleCloseRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    if (existingAgenda) {
-      const nextSliders = slidersFromPos(existingAgenda.cx, existingAgenda.cy);
-      setTitle(existingAgenda.text);
-      setUrgency(nextSliders.urgency);
-      setImportance(nextSliders.importance);
-      setEffort(effortLevelFromTime(existingAgenda.time));
-      setSelectedTag(existingAgenda.domain);
-      setIsMIT(mit === existingAgenda.text);
-      return;
-    }
+    let cancelled = false;
+    (async () => {
+      savedRef.current = false;
+      if (existingAgenda) {
+        const draft = await loadEditDraft(existingAgenda.id);
+        if (cancelled) return;
+        if (draft) {
+          setTitle(draft.text);
+          setUrgency(draft.urgency);
+          setImportance(draft.importance);
+          setEffort(draft.effort);
+          setSelectedTag(draft.domain);
+          setIsMIT(mit === draft.text);
+          setHasDraft(true);
+          setHydrated(true);
+          return;
+        }
+        const nextSliders = slidersFromPos(existingAgenda.cx, existingAgenda.cy);
+        setTitle(existingAgenda.text);
+        setUrgency(nextSliders.urgency);
+        setImportance(nextSliders.importance);
+        setEffort(effortLevelFromTime(existingAgenda.time));
+        setSelectedTag(existingAgenda.domain);
+        setIsMIT(mit === existingAgenda.text);
+        setHasDraft(false);
+        setHydrated(true);
+        return;
+      }
 
-    setTitle(preset?.defaultText ?? '');
-    setUrgency(preset?.urgency ?? 50);
-    setImportance(preset?.importance ?? 50);
-    setEffort(3);
-    setSelectedTag(preset?.defaultDomain ?? config.tags[0]);
-    setIsMIT(false);
+      const addDraft = await loadAddDraft();
+      if (cancelled) return;
+      if (addDraft && preset?.defaultText == null && preset?.urgency == null && preset?.importance == null) {
+        setTitle(addDraft.text);
+        setUrgency(addDraft.urgency);
+        setImportance(addDraft.importance);
+        setEffort(addDraft.effort);
+        setSelectedTag(addDraft.domain);
+        setIsMIT(!!addDraft.isMIT);
+        setHasDraft(true);
+        setHydrated(true);
+        return;
+      }
+
+      setTitle(preset?.defaultText ?? '');
+      setUrgency(preset?.urgency ?? 50);
+      setImportance(preset?.importance ?? 50);
+      setEffort(2);
+      setSelectedTag(preset?.defaultDomain ?? config.tags[0]);
+      setIsMIT(false);
+      setHasDraft(false);
+      setHydrated(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [agendaId, existingAgenda, preset, config.tags, mit]);
 
   useEffect(() => {
@@ -174,8 +225,10 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
   const handleSave = async () => {
     if (!canSave) return;
     const timeVal = EFFORT_TIME[effort] as any;
+    savedRef.current = true;
     if (existingAgenda) {
       await updateAgenda(existingAgenda.id, { text: title.trim(), domain: selectedTag, time: timeVal, cx, cy });
+      await clearEditDraft(existingAgenda.id).catch(() => {});
       onSave('Updated');
     } else {
       const agenda = await addAgenda({ text: title.trim(), domain: selectedTag, time: timeVal, urgency, importance });
@@ -183,7 +236,89 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
         if (isMIT) await useClearDayStore.getState().setMit(agenda.text);
         if (preset?.addToHold) await useClearDayStore.getState().toggleHold(agenda.id);
       }
+      await clearAddDraft().catch(() => {});
       onSave(preset?.addToHold ? 'Added to Hold' : 'Added to ' + quadrantLabels[quadrant as Quadrant]);
+    }
+  };
+
+  const persistDraftOnClose = async () => {
+    if (!hydrated || savedRef.current) return;
+    const trimmed = title.trim();
+    const draft: SheetDraft = {
+      text: trimmed,
+      urgency,
+      importance,
+      effort,
+      domain: selectedTag,
+      isMIT,
+      updatedAt: Date.now(),
+    };
+    try {
+      if (existingAgenda) {
+        const existingSliders = slidersFromPos(existingAgenda.cx, existingAgenda.cy);
+        const sameAsAgenda =
+          trimmed === existingAgenda.text &&
+          urgency === existingSliders.urgency &&
+          importance === existingSliders.importance &&
+          effort === effortLevelFromTime(existingAgenda.time) &&
+          selectedTag === existingAgenda.domain;
+        if (sameAsAgenda) {
+          await clearEditDraft(existingAgenda.id);
+        } else {
+          await saveEditDraft(existingAgenda.id, draft);
+        }
+      } else {
+        const isPristine =
+          trimmed.length === 0 &&
+          urgency === (preset?.urgency ?? 50) &&
+          importance === (preset?.importance ?? 50) &&
+          effort === 2 &&
+          selectedTag === (preset?.defaultDomain ?? config.tags[0]) &&
+          !isMIT;
+        if (isPristine) {
+          await clearAddDraft();
+        } else {
+          await saveAddDraft(draft);
+        }
+      }
+    } catch {
+      // drafts are best-effort
+    }
+  };
+
+  const handleClose = () => {
+    void persistDraftOnClose();
+    onClose();
+  };
+  handleCloseRef.current = handleClose;
+
+  const persistOnUnmountRef = useRef<(() => void) | null>(null);
+  persistOnUnmountRef.current = persistDraftOnClose;
+  useEffect(() => {
+    return () => {
+      persistOnUnmountRef.current?.();
+    };
+  }, []);
+
+  const handleDiscard = async () => {
+    setHasDraft(false);
+    if (existingAgenda) {
+      await clearEditDraft(existingAgenda.id).catch(() => {});
+      const nextSliders = slidersFromPos(existingAgenda.cx, existingAgenda.cy);
+      setTitle(existingAgenda.text);
+      setUrgency(nextSliders.urgency);
+      setImportance(nextSliders.importance);
+      setEffort(effortLevelFromTime(existingAgenda.time));
+      setSelectedTag(existingAgenda.domain);
+      setIsMIT(mit === existingAgenda.text);
+    } else {
+      await clearAddDraft().catch(() => {});
+      setTitle(preset?.defaultText ?? '');
+      setUrgency(preset?.urgency ?? 50);
+      setImportance(preset?.importance ?? 50);
+      setEffort(2);
+      setSelectedTag(preset?.defaultDomain ?? config.tags[0]);
+      setIsMIT(false);
     }
   };
 
@@ -192,6 +327,9 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
     sheet: { backgroundColor: sheetTone, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: keyboardVisible ? 0 : insets.bottom + 8, maxHeight: '64%' },
     handleArea: { width: '100%', alignItems: 'center', paddingTop: 8, paddingBottom: 8 },
     handle: { width: 36, height: 3, backgroundColor: tokens.border, borderRadius: 2 },
+    draftBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 6 },
+    draftLabel: { fontFamily: fonts.serifItalic, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.textMuted },
+    draftDiscard: { fontFamily: fonts.sansMedium, fontSize: fontScale(9, fontSizeMultiplier), color: tokens.accent, textTransform: 'uppercase', letterSpacing: 0.8 },
     scroll: { paddingHorizontal: 16 },
     titleInput: { borderWidth: 0.5, borderColor: tokens.borderMid, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: matrixStyle === 'paper' ? tokens.surface : tokens.surface2, fontFamily: fonts.serifItalic, fontSize: fontScale(14, fontSizeMultiplier), color: tokens.text, marginBottom: 8 },
     mitRow: { flexDirection: 'row', alignItems: 'center', height: 36, marginBottom: 8, gap: 8 },
@@ -259,13 +397,21 @@ export function AddEditSheet({ tokens, fontChoice, agendaId, preset, onClose, on
       keyboardVerticalOffset={Platform.OS === 'ios' ? -2 : 0}
       style={s.overlay}
     >
-      <TouchableWithoutFeedback onPress={onClose}>
+      <TouchableWithoutFeedback onPress={handleClose}>
         <View style={{ flex: 1 }} hitSlop={{ top: 0, bottom: 24, left: 0, right: 0 }} />
       </TouchableWithoutFeedback>
       <View style={s.sheet}>
         <View style={s.handleArea} {...dismissPan.panHandlers}>
           <View style={s.handle} />
         </View>
+        {hasDraft && (
+          <View style={s.draftBanner}>
+            <Text style={s.draftLabel}>Restored from your last unsaved edits</Text>
+            <TouchableOpacity onPress={handleDiscard} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={s.draftDiscard}>Discard</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         <ScrollView
           style={s.scroll}
           keyboardShouldPersistTaps="handled"
